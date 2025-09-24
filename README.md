@@ -9,6 +9,7 @@ LLM + Evaluation - 黄兰婷， 郭萱
 
 ## Structure
 
+```
 YATA/
 │
 ├── algorithms/
@@ -18,6 +19,7 @@ YATA/
 ├── frontend/
 │
 └── README.md
+```
 
 ## Requirement
 
