@@ -13,13 +13,21 @@ body {
 }
 
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-sidebar {
   background-color: #f7f8fa;
   border-right: 1px solid #e5e7eb;
   padding: 24px 16px;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -87,10 +95,11 @@ body {
 
 .app-content {
   background-color: #fff;
-  padding: 32px;
+  padding: 24px 32px 32px;
   display: flex;
   flex-direction: column;
   flex: 1;
+  overflow: hidden;
 }
 
 .topbar {
@@ -111,10 +120,11 @@ body {
 .chat-panel {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px);
+  flex: 1;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
+  min-height: 0;
 }
 
 .chat-header {
@@ -133,6 +143,7 @@ body {
   flex-direction: column;
   gap: 20px;
   margin-bottom: 24px;
+  min-height: 0;
 }
 
 .chat-message {
