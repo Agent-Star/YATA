@@ -4,28 +4,8 @@ import { usePlannerContext } from '@store/plannerContext';
 import { requestPlan } from '@lib/services/aiPlanner';
 
 export function usePlanner() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const { state, dispatch } = usePlannerContext();
-
-  const formatPlanResponse = useCallback(
-    (plan) => {
-      const itinerary = plan.itinerary
-        .map((item) =>
-          t('chat.plan.dailyTemplate', {
-            day: item.day,
-            highlight: t(item.highlightKey, { city: plan.city }),
-          })
-        )
-        .join('\n');
-
-      const tips = plan.tips.map((tipKey) => `- ${t(tipKey)}`).join('\n');
-
-      return `${t('chat.plan.headline', { city: plan.city })}\n\n${t(
-        'chat.plan.itineraryTitle'
-      )}\n${itinerary}\n\n${t('chat.plan.tipsTitle')}\n${tips}`;
-    },
-    [t]
-  );
 
   const setActiveSection = useCallback(
     (sectionKey) => {
@@ -67,7 +47,7 @@ export function usePlanner() {
         const assistantMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: formatPlanResponse(plan),
+          content: plan,
         };
 
         dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage });
@@ -77,7 +57,7 @@ export function usePlanner() {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     },
-    [addAssistantError, dispatch, formatPlanResponse]
+    [addAssistantError, dispatch]
   );
 
   const triggerQuickAction = useCallback(

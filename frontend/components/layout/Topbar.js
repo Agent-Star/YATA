@@ -20,7 +20,9 @@ function Topbar() {
         <Button icon={<IconCalendar />} theme="borderless" />
         <Button icon={<IconBell />} theme="borderless" />
         <LanguageSwitcher />
-        <Avatar color="green">Y</Avatar>
+        <Avatar color="green" size="small" shape="circle" className="topbar__avatar">
+          阿瑾
+        </Avatar>
       </Space>
     </div>
   );

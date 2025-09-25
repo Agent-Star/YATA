@@ -28,7 +28,6 @@ function Sidebar({ groups, activeKey, onSelect }) {
   return (
     <div className="sidebar">
       <div className="sidebar__workspace">
-        <Avatar size="small" color="indigo">旅</Avatar>
         <Typography.Title heading={5} style={{ margin: 0 }}>
           {t('layout.workspaceName')}
         </Typography.Title>

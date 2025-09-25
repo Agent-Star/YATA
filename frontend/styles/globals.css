@@ -112,6 +112,10 @@ body {
   min-width: 240px;
 }
 
+.topbar__avatar {
+  flex-shrink: 0;
+}
+
 .language-switcher {
   display: flex;
   gap: 6px;

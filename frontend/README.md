@@ -2,7 +2,7 @@
 
 这是 YATA (Yet Another Travel Agent) 项目的前端部分，基于 Next.js 构建。
 
-## 技术栈
+## 技术栈   
 
 - **Next.js**: React 框架，用于服务端渲染和静态网站生成
 - **Semi UI**: 字节跳动开源的企业级设计系统和 React 组件库
