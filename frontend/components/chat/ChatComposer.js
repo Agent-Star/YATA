@@ -1,6 +1,9 @@
 import { Button, TextArea } from '@douyinfe/semi-ui';
+import { useTranslation } from 'react-i18next';
 
 function ChatComposer({ value, onChange, onSend, isLoading }) {
+  const { t } = useTranslation();
+
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -15,7 +18,7 @@ function ChatComposer({ value, onChange, onSend, isLoading }) {
         onChange={onChange}
         onKeyDown={handleKeyDown}
         autosize
-        placeholder="描述你的目的地、人数和偏好，例如：安排一个5天巴黎艺术之旅。"
+        placeholder={t('chat.composerPlaceholder')}
       />
       <Button
         type="primary"
@@ -24,7 +27,7 @@ function ChatComposer({ value, onChange, onSend, isLoading }) {
         loading={isLoading}
         disabled={!value.trim()}
       >
-        生成行程
+        {t('chat.sendButton')}
       </Button>
     </div>
   );

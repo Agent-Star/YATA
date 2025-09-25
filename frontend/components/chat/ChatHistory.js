@@ -1,16 +1,20 @@
 import { Card, Skeleton, Typography } from '@douyinfe/semi-ui';
+import { useTranslation } from 'react-i18next';
 
-function ChatMessage({ role, content }) {
+function ChatMessage({ message }) {
+  const { t } = useTranslation();
+  const { role, content, contentKey, contentParams } = message;
   const isUser = role === 'user';
+  const displayContent = contentKey ? t(contentKey, contentParams) : content;
 
   return (
     <div className={`chat-message ${isUser ? 'chat-message--user' : 'chat-message--assistant'}`}>
       <Card className="chat-message__card" bordered={false} style={{ maxWidth: '70%' }}>
         <Typography.Text strong={isUser}>
-          {isUser ? '你' : 'YATA AI'}
+          {isUser ? t('chat.you') : t('chat.assistant')}
         </Typography.Text>
         <Typography.Paragraph style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>
-          {content}
+          {displayContent}
         </Typography.Paragraph>
       </Card>
     </div>
@@ -21,7 +25,7 @@ function ChatHistory({ messages, isLoading }) {
   return (
     <div className="chat-history">
       {messages.map((message) => (
-        <ChatMessage key={message.id} role={message.role} content={message.content} />
+        <ChatMessage key={message.id} message={message} />
       ))}
       {isLoading ? (
         <div className="chat-message chat-message--assistant">

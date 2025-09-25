@@ -9,8 +9,7 @@ export const initialPlannerState = {
     {
       id: 'welcome',
       role: 'assistant',
-      content:
-        '你好，我是你的AI旅行助手。告诉我你想去的地方、出行天数和偏好，我会帮你拟定行程计划。',
+      contentKey: 'chat.initialMessage',
     },
   ],
   isLoading: false,

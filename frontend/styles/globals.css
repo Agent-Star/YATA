@@ -103,6 +103,11 @@ body {
   min-width: 240px;
 }
 
+.language-switcher {
+  display: flex;
+  gap: 6px;
+}
+
 .chat-panel {
   display: flex;
   flex-direction: column;

@@ -9,6 +9,7 @@ import {
   IconSend,
   IconSetting,
 } from '@douyinfe/semi-icons';
+import { useTranslation } from 'react-i18next';
 
 const iconMap = {
   IconApps,
@@ -22,22 +23,24 @@ const iconMap = {
 };
 
 function Sidebar({ groups, activeKey, onSelect }) {
+  const { t } = useTranslation();
+
   return (
     <div className="sidebar">
       <div className="sidebar__workspace">
         <Avatar size="small" color="indigo">旅</Avatar>
         <Typography.Title heading={5} style={{ margin: 0 }}>
-          YATA Travel
+          {t('layout.workspaceName')}
         </Typography.Title>
       </div>
       <div className="sidebar__actions">
-        <Button theme="light" block icon={<IconApps />}>新建栏目</Button>
+        <Button theme="light" block icon={<IconApps />}>{t('layout.newBoard')}</Button>
       </div>
       <div className="sidebar__nav">
         {groups.map((group) => (
-          <div className="sidebar__section" key={group.title}>
+          <div className="sidebar__section" key={group.key}>
             <Typography.Text type="tertiary" className="sidebar__section-title">
-              {group.title.toUpperCase()}
+              {t(group.titleKey)}
             </Typography.Text>
             <div className="sidebar__section-items">
               {group.items.map((item) => {
@@ -52,7 +55,7 @@ function Sidebar({ groups, activeKey, onSelect }) {
                     onClick={() => onSelect(item.key)}
                     block
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </Button>
                 );
               })}
@@ -61,7 +64,7 @@ function Sidebar({ groups, activeKey, onSelect }) {
         ))}
       </div>
       <div className="sidebar__footer">
-        <Typography.Text type="tertiary">Personal Workspace</Typography.Text>
+        <Typography.Text type="tertiary">{t('layout.personalWorkspace')}</Typography.Text>
       </div>
     </div>
   );

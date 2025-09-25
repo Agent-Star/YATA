@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import MainLayout from '@components/layout/MainLayout';
 import Sidebar from '@components/layout/Sidebar';
 import Topbar from '@components/layout/Topbar';
@@ -7,6 +8,7 @@ import ChatPanel from '@modules/chat/ChatPanel';
 import { usePlanner } from '@lib/hooks/usePlanner';
 
 function HomePage() {
+  const { t } = useTranslation();
   const {
     state: { sidebarGroups, activeSection },
     setActiveSection,
@@ -19,23 +21,23 @@ function HomePage() {
       case 'dashboard':
         return (
           <EmptyState
-            title="旅行数据总览即将到来"
-            description="在这里你可以查看旅行灵感、收藏和出行安排。"
-            actionText="返回AI规划"
+            title={t('emptyState.dashboardTitle')}
+            description={t('emptyState.dashboardDescription')}
+            actionText={t('emptyState.dashboardAction')}
             onAction={() => setActiveSection('ai-planner')}
           />
         );
       default:
         return (
           <EmptyState
-            title="功能建设中"
-            description="我们正在为这个栏目构建体验，先尝试使用AI旅行规划吧。"
-            actionText="打开AI旅行助手"
+            title={t('emptyState.buildingTitle')}
+            description={t('emptyState.buildingDescription')}
+            actionText={t('emptyState.buildingAction')}
             onAction={() => setActiveSection('ai-planner')}
           />
         );
     }
-  }, [activeSection, setActiveSection]);
+  }, [activeSection, setActiveSection, t]);
 
   return (
     <MainLayout

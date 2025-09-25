@@ -1,16 +1,31 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePlannerContext } from '@store/plannerContext';
 import { requestPlan } from '@lib/services/aiPlanner';
 
-function formatPlanResponse(plan) {
-  const itinerary = plan.itinerary.map((line, index) => `${index + 1}. ${line}`).join('\n');
-  const tips = plan.tips.map((tip) => `- ${tip}`).join('\n');
-
-  return `${plan.headline}\n\n行程安排：\n${itinerary}\n\n旅行贴士：\n${tips}`;
-}
-
 export function usePlanner() {
+  const { t, i18n } = useTranslation();
   const { state, dispatch } = usePlannerContext();
+
+  const formatPlanResponse = useCallback(
+    (plan) => {
+      const itinerary = plan.itinerary
+        .map((item) =>
+          t('chat.plan.dailyTemplate', {
+            day: item.day,
+            highlight: t(item.highlightKey, { city: plan.city }),
+          })
+        )
+        .join('\n');
+
+      const tips = plan.tips.map((tipKey) => `- ${t(tipKey)}`).join('\n');
+
+      return `${t('chat.plan.headline', { city: plan.city })}\n\n${t(
+        'chat.plan.itineraryTitle'
+      )}\n${itinerary}\n\n${t('chat.plan.tipsTitle')}\n${tips}`;
+    },
+    [t]
+  );
 
   const setActiveSection = useCallback(
     (sectionKey) => {
@@ -25,7 +40,7 @@ export function usePlanner() {
       payload: {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: '抱歉，暂时无法生成计划，请稍后再试。',
+        contentKey: 'chat.errorMessage',
       },
     });
   }, [dispatch]);
@@ -62,15 +77,22 @@ export function usePlanner() {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     },
-    [addAssistantError, dispatch]
+    [addAssistantError, dispatch, formatPlanResponse]
   );
 
   const triggerQuickAction = useCallback(
     async (action) => {
       dispatch({ type: 'PREPEND_QUICK_ACTION', payload: action });
-      await sendMessage(action.prompt);
+      const promptValue =
+        typeof action.prompt === 'string'
+          ? action.prompt
+          : action.prompt?.[i18n.language] || action.prompt?.en || '';
+
+      if (promptValue) {
+        await sendMessage(promptValue);
+      }
     },
-    [dispatch, sendMessage]
+    [dispatch, i18n.language, sendMessage]
   );
 
   return {

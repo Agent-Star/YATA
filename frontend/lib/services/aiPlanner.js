@@ -1,23 +1,30 @@
-const sampleDailyPlan = (day, city, highlight) => {
-  return `Day ${day} in ${city}: ${highlight}.`;
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const extractEnglishCity = (prompt) => {
+  return prompt.match(/to\s+([A-Z][A-Za-z\s]+)/i)?.[1]?.trim();
 };
 
-export async function requestPlan(prompt) {
-  await new Promise((resolve) => setTimeout(resolve, 600));
+const isChinesePrompt = (prompt) => /[\u4e00-\u9fa5]/.test(prompt);
 
-  const city = prompt.match(/to\s([A-Z][A-Za-z\s]+)/i)?.[1]?.trim() || 'your destination';
+export async function requestPlan(prompt) {
+  await delay(600);
+
+  const englishCity = extractEnglishCity(prompt);
+  const fallbackCity = isChinesePrompt(prompt) ? '你的目的地' : 'your destination';
+  const city = englishCity || fallbackCity;
 
   return {
-    headline: `Here is a tailored itinerary for ${city}.`,
+    city,
+    headlineKey: 'chat.plan.headline',
     itinerary: [
-      sampleDailyPlan(1, city, 'Arrive, explore the historic center and enjoy local cuisine'),
-      sampleDailyPlan(2, city, 'Immerse in signature cultural experiences and hidden highlights'),
-      sampleDailyPlan(3, city, 'Relax, shop for souvenirs, and wrap up with a memorable dinner'),
+      { day: 1, highlightKey: 'chat.plan.highlights.1' },
+      { day: 2, highlightKey: 'chat.plan.highlights.2' },
+      { day: 3, highlightKey: 'chat.plan.highlights.3' },
     ],
     tips: [
-      'Adjust the pace of each day depending on your energy levels and interests.',
-      'Reserve popular experiences in advance to secure your spot.',
-      'Bring a reusable bottle and stay hydrated during excursions.',
+      'chat.plan.tips.1',
+      'chat.plan.tips.2',
+      'chat.plan.tips.3',
     ],
   };
 }
