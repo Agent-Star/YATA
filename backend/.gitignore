@@ -7,9 +7,9 @@ checkpoints.db-*
 .langgraph_api/
 
 # VSCode
-.vscode
-.DS_Store
-*.code-workspace
+.vscode/
+.DS_Store/
+*.code-workspace/
 
 # cursor
 .cursorindexingignore
