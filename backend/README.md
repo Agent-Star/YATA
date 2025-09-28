@@ -6,9 +6,9 @@
 
 ![架构](./media/agent_architecture.png)
 
-该架构参考了 [JoshuaC215](https://github.com/JoshuaC215) 的 [Agent Service Toolkit](https://github.com/JoshuaC215/agent-service-toolkit) 中的相关设计
+该架构参考了 [JoshuaC215](https://github.com/JoshuaC215) 的 [Agent Service Toolkit](https://github.com/JoshuaC215/agent-service-toolkit)
 
-架构图引用了 [Agent Service Toolkit](https://github.com/JoshuaC215/agent-service-toolkit) 项目的 [相关设计](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)
+架构图引用自 [Agent Service Toolkit](https://github.com/JoshuaC215/agent-service-toolkit) 项目的 [相关设计](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)
 
 ## 技术栈
 
@@ -33,5 +33,5 @@ todo
 
 ## 注意事项
 
-- 目前仍处于初步开发阶段, [项目结构](#关键文件-项目结构) 后续可能会有变动.
-  - [项目架构](#项目架构) 也可能在现有基础上进行拓展.
+- 目前仍处于初步开发阶段, [项目结构](#关键文件-项目结构) 后续可能会有变动
+  - [项目架构](#项目架构) 也可能在现有基础上进行拓展
