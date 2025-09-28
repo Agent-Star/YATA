@@ -3,9 +3,7 @@ name = "YATA-Backend"
 version = "0.1.0"
 description = "YATA's backend, based on [Agent Service Toolkit](https://github.com/JoshuaC215/agent-service-toolkit)"
 readme = "README.md"
-authors = [
-    { name = "Eden Wang", email = "edwardwang33773@gmail.com" },
-]
+authors = [{ name = "Eden Wang", email = "edwardwang33773@gmail.com" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -57,7 +55,7 @@ dependencies = [
     "streamlit ~=1.46.0",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
-
+    "playwright",
 ]
 
 [dependency-groups]
@@ -83,14 +81,14 @@ client = [
 ]
 
 [tool.ruff]
-line-length    = 100
+line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
 # extend-select = ["I", "U"]
 
 [tool.pytest.ini_options]
-pythonpath                         = ["src"]
+pythonpath = ["src"]
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.pytest_env]
@@ -101,5 +99,5 @@ plugins = "pydantic.mypy"
 exclude = "src/streamlit_app.py"
 
 [[tool.mypy.overrides]]
-module                 = ["numexpr.*"]
+module = ["numexpr.*"]
 follow_untyped_imports = true
