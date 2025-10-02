@@ -14,12 +14,14 @@ function ChatPanel() {
   } = usePlanner();
 
   const handleSend = async () => {
-    if (!draft.trim()) {
+    const message = draft.trim();
+
+    if (!message) {
       return;
     }
 
-    await sendMessage(draft);
     setDraft('');
+    await sendMessage(message);
   };
 
   const handleQuickAction = async (action) => {

@@ -19,13 +19,14 @@ function ChatComposer({ value, onChange, onSend, isLoading }) {
         onKeyDown={handleKeyDown}
         autosize
         placeholder={t('chat.composerPlaceholder')}
+        disabled={isLoading}
       />
       <Button
         type="primary"
         theme="solid"
         onClick={onSend}
         loading={isLoading}
-        disabled={!value.trim()}
+        disabled={isLoading || !value.trim()}
       >
         {t('chat.sendButton')}
       </Button>
