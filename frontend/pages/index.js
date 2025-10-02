@@ -6,6 +6,8 @@ import Topbar from '@components/layout/Topbar';
 import EmptyState from '@components/common/EmptyState';
 import ChatPanel from '@modules/chat/ChatPanel';
 import { usePlanner } from '@lib/hooks/usePlanner';
+import AuthPrompt from '@components/auth/AuthPrompt';
+import { useAuth } from '@lib/hooks/useAuth';
 
 function HomePage() {
   const { t } = useTranslation();
@@ -13,8 +15,15 @@ function HomePage() {
     state: { sidebarGroups, activeSection },
     setActiveSection,
   } = usePlanner();
+  const {
+    state: { isAuthenticated },
+  } = useAuth();
 
   const content = useMemo(() => {
+    if (!isAuthenticated) {
+      return <AuthPrompt />;
+    }
+
     switch (activeSection) {
       case 'ai-planner':
         return <ChatPanel />;
@@ -37,7 +46,7 @@ function HomePage() {
           />
         );
     }
-  }, [activeSection, setActiveSection, t]);
+  }, [activeSection, isAuthenticated, setActiveSection, t]);
 
   return (
     <MainLayout

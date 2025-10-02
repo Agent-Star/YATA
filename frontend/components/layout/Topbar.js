@@ -2,9 +2,17 @@ import { Avatar, Button, Input, Space, Typography } from '@douyinfe/semi-ui';
 import { IconBell, IconCalendar, IconSearch } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@components/common/LanguageSwitcher';
+import { useAuth } from '@lib/hooks/useAuth';
 
 function Topbar() {
   const { t } = useTranslation();
+  const {
+    state: { user, isAuthenticated },
+    logout,
+  } = useAuth();
+
+  const displayName = user?.account || t('auth.guest');
+  const avatarLabel = displayName.slice(0, 2);
 
   return (
     <div className="topbar">
@@ -20,9 +28,27 @@ function Topbar() {
         <Button icon={<IconCalendar />} theme="borderless" />
         <Button icon={<IconBell />} theme="borderless" />
         <LanguageSwitcher />
-        <Avatar color="green" size="small" shape="circle" className="topbar__avatar">
-          阿瑾
-        </Avatar>
+        <Space align="center" spacing={8}>
+          <Avatar
+            color="green"
+            size="default"
+            shape="circle"
+            className="topbar__avatar"
+            title={displayName}
+          >
+            {avatarLabel}
+          </Avatar>
+          {user?.account ? <Typography.Text strong>{displayName}</Typography.Text> : null}
+          {isAuthenticated ? (
+            <Button
+              theme="borderless"
+              type="primary"
+              onClick={logout}
+            >
+              {t('auth.logout')}
+            </Button>
+          ) : null}
+        </Space>
       </Space>
     </div>
   );
