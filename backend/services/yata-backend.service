@@ -1,0 +1,18 @@
+[Unit]
+Description=YATA Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/YATA/backend
+Environment="PATH=%h/YATA/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/YATA/backend/.venv/bin/python src/service/service.py
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

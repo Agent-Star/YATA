@@ -1,6 +1,3 @@
-# qustions/answers with LLM
-qa/
-
 # Streamlit and sqlite
 .streamlit/secrets.toml
 checkpoints.db
