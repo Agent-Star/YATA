@@ -1,0 +1,18 @@
+[Unit]
+Description=YATA Tiny Frontend Service (Streamlit)
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/YATA/backend
+Environment="PATH=%h/YATA/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/YATA/backend/.venv/bin/streamlit run src/streamlit_app.py --server.headless=true
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
