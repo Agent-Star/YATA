@@ -27,7 +27,40 @@
 
 ## 运行项目
 
-todo
+1. 配置 API KEY
+   - 目前支持 `ChatGPT`, `Claude`, `Gemini`, `DeepSeek`, `Groq` 等模型, 也可以使用 `OpenRouter` 提供的中转服务.
+   - [.env.example](./.env.example) 中提供了示例配置, 可以使用下述指令直接创建 `.env` 文件:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+2. 安装 uv 包管理器
+   - 已测试版本: `0.7.19`
+
+    ```bash
+    curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh
+    ```
+
+3. 配置虚拟环境与依赖
+
+    ```bash
+    uv venv
+    uv sync --frozen
+    source ./.venv/bin/activate
+    ```
+
+4. 启动后端服务
+
+    ```bash
+    python src/service/service.py
+    ```
+
+5. 启动简易前端界面 (可选)
+  
+    ```bash
+    streamlit run src/streamlit_app.py
+    ```
 
 ## 注意事项
 
