@@ -4,7 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=%i
+# 注意: 此配置仅适用于用户级服务 (systemctl --user)
+# 如需系统级服务，请使用 yata-backend-system.service
 WorkingDirectory=%h/YATA/backend
 Environment="PATH=%h/YATA/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 ExecStart=%h/YATA/backend/.venv/bin/python src/service/service.py
@@ -14,5 +15,5 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 
