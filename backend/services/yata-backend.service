@@ -8,7 +8,7 @@ Type=simple
 # 如需系统级服务，请使用 yata-backend-system.service
 WorkingDirectory=%h/YATA/backend
 Environment="PATH=%h/YATA/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=%h/YATA/backend/.venv/bin/python src/service/service.py
+ExecStart=%h/YATA/backend/.venv/bin/python src/run_service.py
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
