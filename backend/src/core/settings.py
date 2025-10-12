@@ -78,7 +78,18 @@ class Settings(BaseSettings):
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
     LOG_LEVEL: LogLevel = LogLevel.WARNING
 
+    # === 认证配置 ===
+    # 向后兼容的 Bearer Token 认证 (用于 API 密钥访问)
     AUTH_SECRET: SecretStr | None = None
+
+    # JWT 认证配置 (用于用户登录)
+    AUTH_JWT_SECRET: SecretStr = Field(
+        default_factory=lambda: SecretStr("change-me-in-production-please-use-a-secure-random-key")
+    )
+    AUTH_JWT_LIFETIME_SECONDS: int = Field(
+        default=3600 * 24 * 7,  # 默认 7 天
+        description="JWT token 有效期（秒）",
+    )
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None

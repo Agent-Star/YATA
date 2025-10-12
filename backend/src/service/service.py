@@ -19,6 +19,14 @@ from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
+from auth import (
+    UserCreate,
+    UserRead,
+    UserUpdate,
+    auth_backend,
+    create_db_and_tables,
+    fastapi_users,
+)
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -61,6 +69,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     based on settings.
     """
     try:
+        # Initialize user authentication database tables
+        logger.info("初始化用户认证数据库表...")
+        await create_db_and_tables()
+        logger.info("用户认证数据库表初始化完成")
+
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
             # Set up both components
@@ -84,7 +97,43 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="YATA Backend API",
+    description="Yet Another Travel Agent - 基于 LangGraph 的智能代理服务",
+    version="0.1.0",
+)
+
+# === 认证路由 ===
+# 注意：认证路由不需要 Bearer token 验证
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_reset_password_router(),
+    prefix="/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_verify_router(UserRead),
+    prefix="/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
+
+# === Agent 相关路由 ===
+# 这些路由使用旧的 Bearer token 验证方式（向后兼容）
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
