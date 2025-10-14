@@ -29,6 +29,10 @@ function ChatPanel() {
     await triggerQuickAction(action);
   };
 
+  const handleVoiceInput = () => {
+    // Placeholder for voice input integration
+  };
+
   return (
     <div className="chat-panel">
       <ChatHeader />
@@ -38,6 +42,7 @@ function ChatPanel() {
         value={draft}
         onChange={setDraft}
         onSend={handleSend}
+        onVoiceInput={handleVoiceInput}
         isLoading={isLoading}
       />
     </div>

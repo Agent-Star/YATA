@@ -3,6 +3,7 @@ import { IconBell, IconCalendar, IconSearch } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@components/common/LanguageSwitcher';
 import { useAuth } from '@lib/hooks/useAuth';
+import Image from 'next/image';
 
 function Topbar() {
   const { t } = useTranslation();
@@ -16,9 +17,9 @@ function Topbar() {
 
   return (
     <div className="topbar">
-      <Typography.Title heading={4} style={{ margin: 0 }}>
-        {t('layout.appTitle')}
-      </Typography.Title>
+      <div className="topbar__branding">
+        <span className="sr-only">{t('layout.appTitle')}</span>
+      </div>
       <Space align="center" spacing={16}>
         <Input
           prefix={<IconSearch />}

@@ -1,4 +1,5 @@
-import { Avatar, Button, Typography } from '@douyinfe/semi-ui';
+import { Button, Typography } from '@douyinfe/semi-ui';
+import Image from 'next/image';
 import {
   IconApps,
   IconBookmark,
@@ -28,9 +29,18 @@ function Sidebar({ groups, activeKey, onSelect }) {
   return (
     <div className="sidebar">
       <div className="sidebar__workspace">
-        <Typography.Title heading={5} style={{ margin: 0 }}>
-          {t('layout.workspaceName')}
-        </Typography.Title>
+        <div className="sidebar__workspace-brand">
+          <Image
+            src="/logo.png"
+            alt={t('layout.workspaceName')}
+            width={65}
+            height={65}
+            priority
+          />
+          <Typography.Title heading={5} style={{ margin: 0 }}>
+            {t('layout.workspaceName')}
+          </Typography.Title>
+        </div>
       </div>
       <div className="sidebar__actions">
         <Button theme="light" block icon={<IconApps />}>{t('layout.newBoard')}</Button>
