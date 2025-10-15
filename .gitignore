@@ -1,0 +1,4 @@
+# vscode configuration
+.vscode/
+.DS_Store/
+*.code-workspace/
