@@ -34,7 +34,7 @@ function Sidebar({ groups, activeKey, onSelect }) {
             src="/logo.png"
             alt={t('layout.workspaceName')}
             width={65}
-            height={65}
+            height={100}
             priority
           />
           <Typography.Title heading={5} style={{ margin: 0 }}>
