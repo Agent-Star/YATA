@@ -4,13 +4,15 @@ import ChatHeader from '@components/chat/ChatHeader';
 import ChatHistory from '@components/chat/ChatHistory';
 import QuickActionList from '@components/chat/QuickActionList';
 import { usePlanner } from '@lib/hooks/usePlanner';
+import { useEffect } from 'react';
 
 function ChatPanel() {
   const [draft, setDraft] = useState('');
   const {
-    state: { messages, quickActions, isLoading },
+    state: { messages, quickActions, isLoading, hasInitializedHistory },
     sendMessage,
     triggerQuickAction,
+    loadHistory,
   } = usePlanner();
 
   const handleSend = async () => {
@@ -28,6 +30,12 @@ function ChatPanel() {
     setDraft('');
     await triggerQuickAction(action);
   };
+
+  useEffect(() => {
+    if (!hasInitializedHistory) {
+      loadHistory();
+    }
+  }, [hasInitializedHistory, loadHistory]);
 
   const handleVoiceInput = () => {
     // Placeholder for voice input integration

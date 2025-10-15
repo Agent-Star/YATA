@@ -1,29 +1,27 @@
 export const initialAuthState = {
   user: null,
   isAuthenticated: false,
-  accounts: [],
+  accessToken: null,
 };
 
 export function authReducer(state, action) {
   switch (action.type) {
-    case 'REGISTER':
+    case 'AUTH_SUCCESS':
       return {
         ...state,
-        accounts: [...state.accounts, action.payload.account],
-        user: { account: action.payload.account.account },
+        user: action.payload.user || null,
+        accessToken: action.payload.accessToken || null,
         isAuthenticated: true,
       };
-    case 'LOGIN':
+    case 'SET_USER':
       return {
         ...state,
-        user: { account: action.payload.account },
-        isAuthenticated: true,
+        user: action.payload.user || null,
+        isAuthenticated: Boolean(action.payload.user),
       };
     case 'LOGOUT':
       return {
-        ...state,
-        user: null,
-        isAuthenticated: false,
+        ...initialAuthState,
       };
     default:
       return state;

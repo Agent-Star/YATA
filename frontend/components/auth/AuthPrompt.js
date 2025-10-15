@@ -73,7 +73,8 @@ function AuthPrompt() {
       closeModal();
     } catch (error) {
       setLoading(false);
-      switch (error.message) {
+      const errorCode = error.code || error.message;
+      switch (errorCode) {
         case 'INVALID_CREDENTIALS':
           setFormError(t('auth.errorInvalidCredentials'));
           break;

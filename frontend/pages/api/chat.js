@@ -1,5 +1,6 @@
+// 模拟api调用，改为调用后端接口后已不再使用
 const API_URL = 'https://api.zmon.me/v1/chat/completions';
-const API_KEY = 'sk-9QHFuVqUIHrQZFo_we-YKX27qpNWhdv04QJ_nSaz7gHCFvsdm7vOQVMD8Mc';
+const API_KEY = '';
 const DEFAULT_MODEL = 'DeepSeek-R1';
 
 async function callChatCompletion({ prompt }) {
