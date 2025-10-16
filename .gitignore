@@ -2,3 +2,6 @@
 .vscode/
 .DS_Store/
 *.code-workspace/
+
+# proposal
+proposal/
