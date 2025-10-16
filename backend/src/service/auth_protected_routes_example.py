@@ -1,13 +1,13 @@
 """
 用户认证保护的路由示例
 
-本文件展示如何在 Agent 相关路由中集成用户认证。
-这些路由示例使用 JWT token 进行用户身份验证。
+本文件展示如何在 Agent 相关路由中集成用户认证.
+这些路由示例使用 JWT token 进行用户身份验证.
 
 使用方式：
 1. 用户首先通过 POST /auth/register 注册账号
 2. 然后通过 POST /auth/jwt/login 登录获取 JWT token
-3. 在调用受保护的路由时，在 Header 中添加: Authorization: Bearer <jwt_token>
+3. 在调用受保护的路由时, 在 Header 中添加: Authorization: Bearer <jwt_token>
 """
 
 from typing import Annotated
