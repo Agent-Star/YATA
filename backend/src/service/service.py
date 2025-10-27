@@ -42,6 +42,7 @@ from schema import (
     UserInput,
 )
 from service.frontend_routes import frontend_router
+from service.planner_routes import planner_router
 from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -164,6 +165,9 @@ app.include_router(
 
 # 前端适配路由 (提供前端期望的接口格式)
 app.include_router(frontend_router)
+
+# 行程规划路由 (智能行程规划功能)
+app.include_router(planner_router)
 
 # === Agent 相关路由 ===
 # 这些路由使用旧的 Bearer token 验证方式（向后兼容）
