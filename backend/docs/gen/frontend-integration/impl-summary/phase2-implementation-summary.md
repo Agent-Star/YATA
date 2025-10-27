@@ -104,11 +104,14 @@ async def on_after_register(self, user: User, request: Optional[Request] = None)
   ↓
 历史记录累积在该 Thread 中
   ↓
-[可选] 用户点击"新建对话"
+[可选] 用户点击"清除对话"
   ↓
-创建新 thread_id, 更新为 main_thread_id
+创建新 thread_id, 更新 main_thread_id
   ↓
-旧对话保留, 新对话在新 Thread 中
+旧 thread_id 丢失，用户无法再访问旧对话
+  ↓
+旧对话数据可能还在数据库中（取决于 Checkpointer 实现）
+但从产品功能角度，旧对话已不可访问 = 丢失
 ```
 
 ---
