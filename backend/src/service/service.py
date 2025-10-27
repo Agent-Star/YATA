@@ -79,12 +79,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
-            # Set up both components
-            if hasattr(saver, "setup"):  # ignore: union-attr
-                await saver.setup()
+            # Set up both components (some savers have async setup method)
+            if hasattr(saver, "setup") and callable(getattr(saver, "setup")):
+                result = saver.setup()  # type: ignore[attr-defined]
+                if hasattr(result, "__await__"):
+                    await result
             # Only setup store for Postgres as InMemoryStore doesn't need setup
-            if hasattr(store, "setup"):  # ignore: union-attr
-                await store.setup()
+            if hasattr(store, "setup") and callable(getattr(store, "setup")):
+                result = store.setup()  # type: ignore[attr-defined]
+                if hasattr(result, "__await__"):
+                    await result
 
             # Configure agents with both memory components
             agents = get_all_agent_info()
@@ -170,11 +174,17 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 async def info() -> ServiceMetadata:
     models = list(settings.AVAILABLE_MODELS)
     models.sort()
+
+    # DEFAULT_MODEL 应该在 settings 初始化时已经设置
+    default_model = settings.DEFAULT_MODEL
+    if default_model is None:
+        raise RuntimeError("DEFAULT_MODEL is not configured")
+
     return ServiceMetadata(
         agents=get_all_agent_info(),
         models=models,
         default_agent=DEFAULT_AGENT,
-        default_model=settings.DEFAULT_MODEL,
+        default_model=default_model,
     )
 
 

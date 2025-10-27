@@ -1,11 +1,13 @@
 """用户管理器配置"""
 
 import logging
+from collections.abc import AsyncGenerator
 from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
+from fastapi_users.db import SQLAlchemyUserDatabase
 
 from auth.database import get_user_db
 from auth.models import User
@@ -30,9 +32,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
 
         # 为新用户创建主 Thread ID
         if not user.main_thread_id:
-            user.main_thread_id = str(uuid4())
-            await self.user_db.update(user)
-            logger.info(f"为用户 {user.id} 创建主 Thread: {user.main_thread_id}")
+            new_thread_id = str(uuid4())
+            await self.user_db.update(user, {"main_thread_id": new_thread_id})
+            logger.info(f"为用户 {user.id} 创建主 Thread: {new_thread_id}")
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
@@ -49,7 +51,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         # TODO: 在这里可以实现发送验证邮件的逻辑
 
 
-async def get_user_manager(user_db=Depends(get_user_db)):
+async def get_user_manager(
+    user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
+) -> AsyncGenerator[UserManager, None]:
     """
     获取用户管理器实例
 

@@ -3,14 +3,13 @@
 提供与前端接口约定一致的路由别名和响应格式。
 """
 
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi_users.authentication import CookieTransport, Strategy
 from pydantic import BaseModel, Field
 
 from auth import User, UserCreate, cookie_auth_backend, current_active_user
-from auth.auth import get_jwt_strategy
 from auth.manager import get_user_manager
 
 
@@ -107,6 +106,7 @@ async def login(
     response: Response,
     credentials: FrontendLoginRequest,
     user_manager=Depends(get_user_manager),
+    strategy: Strategy = Depends(cookie_auth_backend.get_strategy),
 ) -> FrontendAuthResponse:
     """
     账号登录
@@ -115,13 +115,9 @@ async def login(
     登录成功后设置 Cookie 并返回用户信息
     """
     try:
-        # 验证用户凭据
+        # 验证用户凭据 (支持 email 或 username)
         user = await user_manager.authenticate(
-            OAuth2PasswordRequestForm(
-                username=credentials.account,
-                password=credentials.password,
-                scope="",
-            )
+            {"username": credentials.account, "password": credentials.password}
         )
 
         if user is None or not user.is_active:
@@ -130,17 +126,29 @@ async def login(
                 detail={"code": "INVALID_CREDENTIALS", "message": "账号或密码错误"},
             )
 
-        # 生成 JWT token 并设置 Cookie
-        strategy = get_jwt_strategy()
+        # 生成 JWT token
         token = await strategy.write_token(user)
 
-        # 使用 Cookie transport 设置 Cookie
-        await cookie_auth_backend.transport.get_login_response(token, response)
+        # 手动设置 Cookie
+        cookie_transport = cast(CookieTransport, cookie_auth_backend.transport)
+        samesite = cast(Literal["lax", "strict", "none"], cookie_transport.cookie_samesite)
+        response.set_cookie(
+            key=cookie_transport.cookie_name,
+            value=token,
+            max_age=cookie_transport.cookie_max_age,
+            path=cookie_transport.cookie_path,
+            domain=cookie_transport.cookie_domain,
+            secure=cookie_transport.cookie_secure,
+            httponly=cookie_transport.cookie_httponly,
+            samesite=samesite,
+        )
 
+        # 返回前端期望的格式
         return FrontendAuthResponse(
             user=user_to_frontend_format(user),
             accessToken=None,  # Cookie 认证, token 已在 Cookie 中
         )
+
     except HTTPException:
         raise
     except Exception as e:
@@ -161,8 +169,13 @@ async def logout(
     前端适配接口, 对应 POST /auth/logout
     清除 Cookie 会话
     """
-    # 使用 Cookie transport 清除 Cookie
-    await cookie_auth_backend.transport.get_logout_response(response)
+    # 清除 Cookie
+    cookie_transport = cast(CookieTransport, cookie_auth_backend.transport)
+    response.delete_cookie(
+        key=cookie_transport.cookie_name,
+        path=cookie_transport.cookie_path,
+        domain=cookie_transport.cookie_domain,
+    )
     return None
 
 

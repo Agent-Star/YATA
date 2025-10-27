@@ -57,7 +57,8 @@ bearer_auth_backend = AuthenticationBackend(
 )
 
 # FastAPI Users 主实例 (支持 Cookie 和 Bearer 两种认证方式)
-fastapi_users = FastAPIUsers[User, str](
+# Note: User uses UUID as ID type internally, but FastAPI-Users serializes it as str in API
+fastapi_users: FastAPIUsers[User, str] = FastAPIUsers(  # type: ignore[arg-type]
     get_user_manager,
     [cookie_auth_backend, bearer_auth_backend],
 )
