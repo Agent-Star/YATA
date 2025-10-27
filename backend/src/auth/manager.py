@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin
@@ -27,6 +27,12 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         """用户注册后的回调"""
         logger.info(f"用户 {user.id} 已注册，邮箱: {user.email}")
+
+        # 为新用户创建主 Thread ID
+        if not user.main_thread_id:
+            user.main_thread_id = str(uuid4())
+            await self.user_db.update(user)
+            logger.info(f"为用户 {user.id} 创建主 Thread: {user.main_thread_id}")
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
