@@ -175,7 +175,7 @@ app.include_router(frontend_router)
 app.include_router(planner_router)
 
 # === Agent 相关路由 ===
-# 这些路由使用旧的 Bearer token 验证方式（向后兼容）
+# 这些路由使用旧的 Bearer token 验证方式 (向后兼容)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 

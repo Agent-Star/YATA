@@ -40,14 +40,14 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         self, user: User, token: str, request: Optional[Request] = None
     ):
         """忘记密码请求后的回调"""
-        logger.info(f"用户 {user.id} 请求重置密码。Token: {token}")
+        logger.info(f"用户 {user.id} 请求重置密码. Token: {token}")
         # TODO: 在这里可以实现发送密码重置邮件的逻辑
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None
     ):
         """请求验证后的回调"""
-        logger.info(f"用户 {user.id} 请求验证邮箱。Token: {token}")
+        logger.info(f"用户 {user.id} 请求验证邮箱. Token: {token}")
         # TODO: 在这里可以实现发送验证邮件的逻辑
 
 

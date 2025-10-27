@@ -17,9 +17,9 @@ async def initialize_super_admin() -> None:
     初始化超级管理员账户
 
     如果配置了 SUPER_ADMIN_USERNAME 和 SUPER_ADMIN_PASSWORD,
-    并且数据库中不存在该用户名的账户, 则自动创建超级管理员。
+    并且数据库中不存在该用户名的账户, 则自动创建超级管理员.
 
-    密码会通过 UserManager 自动哈希加密。
+    密码会通过 UserManager 自动哈希加密.
     """
     try:
         admin_username = settings.SUPER_ADMIN_USERNAME

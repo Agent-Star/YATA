@@ -34,11 +34,11 @@ async def protected_invoke(
     """
     受用户认证保护的 Agent 调用端点
 
-    该端点要求用户已登录（提供有效的 JWT token）
+    该端点要求用户已登录 (提供有效的 JWT token)
 
     Args:
         user_input: 用户输入
-        current_user: 当前登录用户（由 JWT token 自动注入）
+        current_user: 当前登录用户 (由 JWT token 自动注入)
 
     Returns:
         Agent 的响应消息
@@ -57,7 +57,7 @@ async def protected_invoke(
     # 这里仅作为示例，返回一个模拟响应
     return ChatMessage(
         type="ai",
-        content=f"你好 {current_user.email}! 这是一个受保护的端点。你的消息是: {user_input.message}",
+        content=f"你好 {current_user.email}! 这是一个受保护的端点. 你的消息是: {user_input.message}",
         run_id=str(uuid4()),
     )
 
@@ -133,11 +133,11 @@ async def optional_auth_invoke(
     支持可选用户认证的 Agent 调用端点
 
     如果用户已登录，将自动关联用户 ID；
-    如果用户未登录，仍可使用服务（匿名模式）
+    如果用户未登录，仍可使用服务 (匿名模式)
 
     Args:
         user_input: 用户输入
-        current_user: 当前用户（可选）
+        current_user: 当前用户 (可选)
 
     Returns:
         Agent 的响应消息

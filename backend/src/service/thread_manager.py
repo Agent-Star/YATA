@@ -1,6 +1,6 @@
 """Thread 管理工具
 
-提供用户 Thread 的创建、获取和管理功能。
+提供用户 Thread 的创建、获取和管理功能.
 """
 
 from uuid import uuid4
@@ -84,4 +84,3 @@ async def create_new_thread_for_user(user: User, session: AsyncSession) -> str:
     await session.refresh(user)
 
     return new_thread_id
-

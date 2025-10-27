@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     )
     AUTH_JWT_LIFETIME_SECONDS: int = Field(
         default=3600 * 24 * 7,  # 默认 7 天
-        description="JWT token 有效期（秒）",
+        description="JWT token 有效期 (秒)",
     )
 
     # 超级管理员配置

@@ -76,7 +76,7 @@ def test_user_login(test_client: TestClient):
 
 def test_protected_endpoint_without_auth(test_client: TestClient):
     """测试未认证访问受保护端点"""
-    # 尝试访问需要认证的端点（如果存在）
+    # 尝试访问需要认证的端点 (如果存在)
     # 这里我们测试 /users/me 端点
     response = test_client.get("/users/me")
 

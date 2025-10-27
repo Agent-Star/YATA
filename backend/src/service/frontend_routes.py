@@ -1,6 +1,6 @@
 """前端适配路由
 
-提供与前端接口约定一致的路由别名和响应格式。
+提供与前端接口约定一致的路由别名和响应格式.
 """
 
 from typing import Annotated, Literal, cast
