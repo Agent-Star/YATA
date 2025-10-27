@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
@@ -23,7 +24,8 @@ from auth import (
     UserCreate,
     UserRead,
     UserUpdate,
-    auth_backend,
+    bearer_auth_backend,
+    cookie_auth_backend,
     create_db_and_tables,
     fastapi_users,
 )
@@ -39,6 +41,7 @@ from schema import (
     StreamInput,
     UserInput,
 )
+from service.frontend_routes import frontend_router
 from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -104,13 +107,34 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# === CORS 中间件配置 ===
+# 允许前端跨域访问, 并支持 Cookie 认证
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 前端开发地址
+    allow_credentials=True,  # 允许携带 Cookie
+    allow_methods=["*"],  # 允许所有 HTTP 方法
+    allow_headers=["*"],  # 允许所有请求头
+)
+
 # === 认证路由 ===
 # 注意：认证路由不需要 Bearer token 验证
+
+# Cookie 认证路由 (主要方式, 用于前端)
 app.include_router(
-    fastapi_users.get_auth_router(auth_backend),
+    fastapi_users.get_auth_router(cookie_auth_backend),
+    prefix="/auth/cookie",
+    tags=["auth"],
+)
+
+# JWT Bearer 认证路由 (向后兼容, 用于 API 客户端)
+app.include_router(
+    fastapi_users.get_auth_router(bearer_auth_backend),
     prefix="/auth/jwt",
     tags=["auth"],
 )
+
+# 用户注册、密码重置、邮箱验证路由
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -126,11 +150,16 @@ app.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+
+# 用户信息管理路由
 app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
     prefix="/users",
     tags=["users"],
 )
+
+# 前端适配路由 (提供前端期望的接口格式)
+app.include_router(frontend_router)
 
 # === Agent 相关路由 ===
 # 这些路由使用旧的 Bearer token 验证方式（向后兼容）
