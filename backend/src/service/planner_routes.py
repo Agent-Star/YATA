@@ -66,6 +66,8 @@ class PlanRequest(BaseModel):
 
 def langchain_message_to_frontend(message: AnyMessage) -> FrontendMessage:
     """将 LangChain 消息转换为前端格式"""
+    from datetime import datetime, timezone
+
     # 确定角色
     if isinstance(message, HumanMessage):
         role = "user"
@@ -83,8 +85,22 @@ def langchain_message_to_frontend(message: AnyMessage) -> FrontendMessage:
     # 提取元数据
     metadata = getattr(message, "response_metadata", {})
 
-    # 提取创建时间 (如果有)
+    # 提取创建时间 (尝试从多个来源获取)
     created_at = None
+
+    # 1. 尝试从 additional_kwargs 获取
+    if hasattr(message, "additional_kwargs"):
+        additional_kwargs = getattr(message, "additional_kwargs", {})
+        created_at = additional_kwargs.get("created_at") or additional_kwargs.get("timestamp")
+
+    # 2. 尝试从 response_metadata 获取
+    if not created_at and metadata:
+        created_at = metadata.get("created_at") or metadata.get("timestamp")
+
+    # 3. 如果仍未找到时间戳, 使用当前 UTC 时间
+    # 注意: 这不是理想方案, 但确保字段有值
+    if not created_at:
+        created_at = datetime.now(timezone.utc).isoformat()
 
     return FrontendMessage(
         id=message_id,
@@ -125,6 +141,10 @@ async def get_history(
 
         # 转换为前端格式
         frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
+
+        # 显式按时间升序排列 (确保前端按正确顺序渲染)
+        # 虽然 LangGraph 通常已按时间顺序存储, 但显式排序使代码意图更清晰
+        frontend_messages.sort(key=lambda m: m.createdAt if m.createdAt else "")
 
         return HistoryResponse(messages=frontend_messages)
 
