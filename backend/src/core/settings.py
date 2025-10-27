@@ -91,6 +91,10 @@ class Settings(BaseSettings):
         description="JWT token 有效期（秒）",
     )
 
+    # 超级管理员配置
+    SUPER_ADMIN_USERNAME: str | None = None
+    SUPER_ADMIN_PASSWORD: SecretStr | None = None
+
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None
     ANTHROPIC_API_KEY: SecretStr | None = None

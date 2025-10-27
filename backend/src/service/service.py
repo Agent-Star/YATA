@@ -29,6 +29,7 @@ from auth import (
     create_db_and_tables,
     fastapi_users,
 )
+from auth.init import initialize_super_admin
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -77,6 +78,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("初始化用户认证数据库表...")
         await create_db_and_tables()
         logger.info("用户认证数据库表初始化完成")
+
+        # Initialize super admin user if configured
+        if settings.SUPER_ADMIN_USERNAME and settings.SUPER_ADMIN_PASSWORD:
+            await initialize_super_admin()
 
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
