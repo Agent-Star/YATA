@@ -17,7 +17,7 @@ async def chatbot(
     if previous:
         messages = previous["messages"] + messages
 
-    model = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    model = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     response = await model.ainvoke(messages)
 
     # 为响应添加时间戳

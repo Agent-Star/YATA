@@ -1,6 +1,5 @@
 import asyncio
 
-from backend.src.agents.timestamp import with_message_timestamps
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
@@ -8,6 +7,7 @@ from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.types import StreamWriter
 
 from agents.bg_task_agent.task import Task
+from agents.timestamp import with_message_timestamps
 from core import get_model, settings
 
 
@@ -28,7 +28,7 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
 
 @with_message_timestamps
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 
