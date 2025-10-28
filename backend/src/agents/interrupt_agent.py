@@ -47,7 +47,7 @@ Don't tell the user what their sign is, you are just demonstrating your knowledg
 async def background(state: AgentState, config: RunnableConfig) -> AgentState:
     """This node is to demonstrate doing work before the interrupt"""
 
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m, background_prompt.format())
     response = await model_runnable.ainvoke(state, config)
 
@@ -80,7 +80,7 @@ async def determine_birthdate(
     """This node examines the conversation history to determine user's birthdate, checking store first."""
 
     # Attempt to get user_id for unique storage per user
-    user_id = config["configurable"].get("user_id")
+    user_id = config.get("configurable", {}).get("user_id")
     logger.info(f"[determine_birthdate] Extracted user_id: {user_id}")
     namespace = None
     key = "birthdate"
@@ -127,7 +127,7 @@ async def determine_birthdate(
         )
 
     # If birthdate wasn't retrieved from store, proceed with extraction
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(
         m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
     ).with_config(tags=["skip_stream"])
@@ -208,7 +208,7 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
 
     birthdate_str = birthdate.strftime("%B %d, %Y")  # Format for display
 
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(
         m, response_prompt.format(birthdate_str=birthdate_str, last_user_message=last_user_message)
     )

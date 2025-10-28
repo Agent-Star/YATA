@@ -88,8 +88,12 @@ class Settings(BaseSettings):
     )
     AUTH_JWT_LIFETIME_SECONDS: int = Field(
         default=3600 * 24 * 7,  # 默认 7 天
-        description="JWT token 有效期（秒）",
+        description="JWT token 有效期 (秒)",
     )
+
+    # 超级管理员配置
+    SUPER_ADMIN_USERNAME: str | None = None
+    SUPER_ADMIN_PASSWORD: SecretStr | None = None
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None

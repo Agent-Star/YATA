@@ -7,6 +7,7 @@ from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.types import StreamWriter
 
 from agents.bg_task_agent.task import Task
+from agents.timestamp import with_message_timestamps
 from core import get_model, settings
 
 
@@ -25,8 +26,9 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
     return preprocessor | model  # type: ignore[return-value]
 
 
+@with_message_timestamps
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 

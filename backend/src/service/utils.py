@@ -55,7 +55,7 @@ def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
                 custom_message = ChatMessage(
                     type="custom",
                     content="",
-                    custom_data=message.content[0],
+                    custom_data=message.content[0] if isinstance(message.content[0], dict) else {},
                 )
                 return custom_message
             else:

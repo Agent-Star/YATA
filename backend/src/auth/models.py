@@ -55,6 +55,11 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     # 用于跟踪用户对话使用情况
     total_conversations: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # Thread 管理: 用户的主对话 Thread ID
+    main_thread_id: Mapped[Optional[str]] = mapped_column(
+        String(length=100), index=True, nullable=True
+    )
+
 
 # === Pydantic Schemas for API ===
 

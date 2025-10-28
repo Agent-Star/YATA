@@ -27,7 +27,7 @@ async def registered_user(test_client: TestClient, test_user_data):
 
 @pytest.fixture
 async def authenticated_user(test_client: TestClient, registered_user):
-    """创建并返回已认证的测试用户（包含 token）"""
+    """创建并返回已认证的测试用户 (包含 token)"""
     if not registered_user:
         return None
 

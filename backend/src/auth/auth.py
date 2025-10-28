@@ -4,6 +4,7 @@ from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
+    CookieTransport,
     JWTStrategy,
 )
 
@@ -27,20 +28,39 @@ def get_jwt_strategy() -> JWTStrategy:
     )
 
 
-# Bearer token 传输方式
+# Cookie 传输方式 (主要认证方式)
+cookie_transport = CookieTransport(
+    cookie_name="yata_auth",
+    cookie_max_age=settings.AUTH_JWT_LIFETIME_SECONDS,
+    cookie_path="/",
+    cookie_domain=None,
+    cookie_secure=not settings.is_dev(),
+    cookie_httponly=True,
+    cookie_samesite="lax",
+)
+
+# Bearer token 传输方式 (向后兼容, 用于 API 客户端)
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
 
-# JWT 认证后端
-auth_backend = AuthenticationBackend(
+# Cookie 认证后端 (优先使用)
+cookie_auth_backend = AuthenticationBackend(
+    name="cookie",
+    transport=cookie_transport,
+    get_strategy=get_jwt_strategy,
+)
+
+# JWT Bearer 认证后端 (向后兼容)
+bearer_auth_backend = AuthenticationBackend(
     name="jwt",
     transport=bearer_transport,
     get_strategy=get_jwt_strategy,
 )
 
-# FastAPI Users 主实例
-fastapi_users = FastAPIUsers[User, str](
+# FastAPI Users 主实例 (支持 Cookie 和 Bearer 两种认证方式)
+# Note: User uses UUID as ID type internally, but FastAPI-Users serializes it as str in API
+fastapi_users: FastAPIUsers[User, str] = FastAPIUsers(  # type: ignore[arg-type]
     get_user_manager,
-    [auth_backend],
+    [cookie_auth_backend, bearer_auth_backend],
 )
 
 # 当前活跃用户依赖

@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
@@ -23,10 +24,12 @@ from auth import (
     UserCreate,
     UserRead,
     UserUpdate,
-    auth_backend,
+    bearer_auth_backend,
+    cookie_auth_backend,
     create_db_and_tables,
     fastapi_users,
 )
+from auth.init import initialize_super_admin
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -39,6 +42,8 @@ from schema import (
     StreamInput,
     UserInput,
 )
+from service.frontend_routes import frontend_router
+from service.planner_routes import planner_router
 from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -74,14 +79,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await create_db_and_tables()
         logger.info("用户认证数据库表初始化完成")
 
+        # Initialize super admin user if configured
+        if settings.SUPER_ADMIN_USERNAME and settings.SUPER_ADMIN_PASSWORD:
+            await initialize_super_admin()
+
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
-            # Set up both components
-            if hasattr(saver, "setup"):  # ignore: union-attr
-                await saver.setup()
+            # Set up both components (some savers have async setup method)
+            if hasattr(saver, "setup") and callable(getattr(saver, "setup")):
+                result = saver.setup()  # type: ignore[attr-defined]
+                if hasattr(result, "__await__"):
+                    await result
             # Only setup store for Postgres as InMemoryStore doesn't need setup
-            if hasattr(store, "setup"):  # ignore: union-attr
-                await store.setup()
+            if hasattr(store, "setup") and callable(getattr(store, "setup")):
+                result = store.setup()  # type: ignore[attr-defined]
+                if hasattr(result, "__await__"):
+                    await result
 
             # Configure agents with both memory components
             agents = get_all_agent_info()
@@ -104,13 +117,34 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# === CORS 中间件配置 ===
+# 允许前端跨域访问, 并支持 Cookie 认证
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 前端开发地址
+    allow_credentials=True,  # 允许携带 Cookie
+    allow_methods=["*"],  # 允许所有 HTTP 方法
+    allow_headers=["*"],  # 允许所有请求头
+)
+
 # === 认证路由 ===
 # 注意：认证路由不需要 Bearer token 验证
+
+# Cookie 认证路由 (主要方式, 用于前端)
 app.include_router(
-    fastapi_users.get_auth_router(auth_backend),
+    fastapi_users.get_auth_router(cookie_auth_backend),
+    prefix="/auth/cookie",
+    tags=["auth"],
+)
+
+# JWT Bearer 认证路由 (向后兼容, 用于 API 客户端)
+app.include_router(
+    fastapi_users.get_auth_router(bearer_auth_backend),
     prefix="/auth/jwt",
     tags=["auth"],
 )
+
+# 用户注册、密码重置、邮箱验证路由
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -126,14 +160,22 @@ app.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+
+# 用户信息管理路由
 app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
     prefix="/users",
     tags=["users"],
 )
 
+# 前端适配路由 (提供前端期望的接口格式)
+app.include_router(frontend_router)
+
+# 行程规划路由 (智能行程规划功能)
+app.include_router(planner_router)
+
 # === Agent 相关路由 ===
-# 这些路由使用旧的 Bearer token 验证方式（向后兼容）
+# 这些路由使用旧的 Bearer token 验证方式 (向后兼容)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
@@ -141,11 +183,17 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 async def info() -> ServiceMetadata:
     models = list(settings.AVAILABLE_MODELS)
     models.sort()
+
+    # DEFAULT_MODEL 应该在 settings 初始化时已经设置
+    default_model = settings.DEFAULT_MODEL
+    if default_model is None:
+        raise RuntimeError("DEFAULT_MODEL is not configured")
+
     return ServiceMetadata(
         agents=get_all_agent_info(),
         models=models,
         default_agent=DEFAULT_AGENT,
-        default_model=settings.DEFAULT_MODEL,
+        default_model=default_model,
     )
 
 

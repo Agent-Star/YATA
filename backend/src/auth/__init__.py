@@ -10,7 +10,8 @@
 """
 
 from auth.auth import (
-    auth_backend,
+    bearer_auth_backend,
+    cookie_auth_backend,
     current_active_user,
     current_superuser,
     current_verified_user,
@@ -23,7 +24,8 @@ from auth.models import User, UserCreate, UserRead, UserUpdate
 __all__ = [
     # FastAPI Users 实例
     "fastapi_users",
-    "auth_backend",
+    "cookie_auth_backend",
+    "bearer_auth_backend",
     # 用户依赖
     "current_active_user",
     "current_verified_user",

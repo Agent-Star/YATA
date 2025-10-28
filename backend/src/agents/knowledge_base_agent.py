@@ -10,9 +10,12 @@ from langchain_core.runnables.base import RunnableSequence
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
 
+from agents.timestamp import with_message_timestamps
 from core import get_model, settings
 
 logger = logging.getLogger(__name__)
+
+MIN_SCORE_CONFIDENCE: float | None = 0.5
 
 
 # Define the state
@@ -40,6 +43,7 @@ def get_kb_retriever():
                 "numberOfResults": 3,
             }
         },
+        min_score_confidence=MIN_SCORE_CONFIDENCE,
     )
     return retriever
 
@@ -92,13 +96,15 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
 
     # Use the last human message as the query
     query = human_messages[-1].content
+    # Convert to string (content can be str or list for multimodal messages)
+    query_str = str(query) if not isinstance(query, str) else query
 
     try:
         # Initialize the retriever
         retriever = get_kb_retriever()
 
         # Retrieve documents
-        retrieved_docs = await retriever.ainvoke(query)
+        retrieved_docs = await retriever.ainvoke(query_str)
 
         # Create document summaries for the state
         document_summaries = []
@@ -112,7 +118,7 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
             }
             document_summaries.append(summary)
 
-        logger.info(f"Retrieved {len(document_summaries)} documents for query: {query[:50]}...")
+        logger.info(f"Retrieved {len(document_summaries)} documents for query: {query_str[:50]}...")
 
         return {"retrieved_documents": document_summaries, "messages": []}
 
@@ -144,9 +150,10 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     return {"kb_documents": formatted_docs, "messages": []}
 
 
+@with_message_timestamps
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generate a response based on the retrieved documents."""
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
 
     response = await model_runnable.ainvoke(state, config)

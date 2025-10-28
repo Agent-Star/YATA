@@ -13,6 +13,7 @@ from langgraph.managed import RemainingSteps
 from langgraph.prebuilt import ToolNode
 
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
+from agents.timestamp import with_message_timestamps
 from agents.tools import database_search
 from core import get_model, settings
 
@@ -63,8 +64,9 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
     return AIMessage(content=content)
 
 
+@with_message_timestamps
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config.get("configurable", {}).get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 
@@ -77,7 +79,7 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
             "safety": safety_output,
         }
 
-    if state["remaining_steps"] < 2 and response.tool_calls:
+    if state.get("remaining_steps", 0) < 2 and response.tool_calls:
         return {
             "messages": [
                 AIMessage(
@@ -97,7 +99,9 @@ async def llama_guard_input(state: AgentState, config: RunnableConfig) -> AgentS
 
 
 async def block_unsafe_content(state: AgentState, config: RunnableConfig) -> AgentState:
-    safety: LlamaGuardOutput = state["safety"]
+    safety: LlamaGuardOutput = state.get(
+        "safety", LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
+    )
     return {"messages": [format_safety_message(safety)]}
 
 
@@ -112,7 +116,9 @@ agent.set_entry_point("guard_input")
 
 # Check for unsafe input and block further processing if found
 def check_safety(state: AgentState) -> Literal["unsafe", "safe"]:
-    safety: LlamaGuardOutput = state["safety"]
+    safety: LlamaGuardOutput = state.get(
+        "safety", LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
+    )
     match safety.safety_assessment:
         case SafetyAssessment.UNSAFE:
             return "unsafe"
