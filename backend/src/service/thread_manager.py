@@ -4,9 +4,8 @@ Thread 管理工具
 提供用户 Thread 的创建、获取和管理功能.
 """
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.models import User
@@ -50,14 +49,8 @@ async def get_main_thread_id(user_id: str, session: AsyncSession) -> str | None:
     Returns:
         主 Thread ID, 如果用户不存在或没有主 Thread 则返回 None
     """
-    stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        return None
-
-    return user.main_thread_id
+    user = await session.get(User, UUID(user_id))
+    return user.main_thread_id if user else None
 
 
 async def create_new_thread_for_user(user: User, session: AsyncSession) -> str:
