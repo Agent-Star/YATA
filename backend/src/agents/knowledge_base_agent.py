@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Any
 
+from backend.src.agents.timestamp import with_message_timestamps
 from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -13,6 +14,8 @@ from langgraph.managed import RemainingSteps
 from core import get_model, settings
 
 logger = logging.getLogger(__name__)
+
+MIN_SCORE_CONFIDENCE: float | None = 0.5
 
 
 # Define the state
@@ -40,6 +43,7 @@ def get_kb_retriever():
                 "numberOfResults": 3,
             }
         },
+        min_score_confidence=MIN_SCORE_CONFIDENCE,
     )
     return retriever
 
@@ -144,6 +148,7 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     return {"kb_documents": formatted_docs, "messages": []}
 
 
+@with_message_timestamps
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generate a response based on the retrieved documents."""
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))

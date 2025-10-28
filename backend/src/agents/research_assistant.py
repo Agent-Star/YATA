@@ -11,6 +11,7 @@ from langgraph.managed import RemainingSteps
 from langgraph.prebuilt import ToolNode
 
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
+from agents.timestamp import with_message_timestamps
 from agents.tools import calculator
 from core import get_model, settings
 
@@ -67,6 +68,7 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
     return AIMessage(content=content)
 
 
+@with_message_timestamps
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)

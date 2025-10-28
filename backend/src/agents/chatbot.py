@@ -2,6 +2,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.func import entrypoint
 
+from agents.timestamp import add_timestamp_to_message
 from core import get_model, settings
 
 
@@ -18,6 +19,10 @@ async def chatbot(
 
     model = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     response = await model.ainvoke(messages)
+
+    # 为响应添加时间戳
+    response = add_timestamp_to_message(response)
+
     return entrypoint.final(
         value={"messages": [response]}, save={"messages": messages + [response]}
     )

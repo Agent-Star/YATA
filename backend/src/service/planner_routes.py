@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
+from agents.timestamp import create_timestamped_message
 from auth import User, current_active_user
 from auth.database import get_async_session
 from core import settings
@@ -188,8 +189,8 @@ async def plan_stream(
 
             config = RunnableConfig(configurable=configurable)
 
-            # 构建输入
-            input_message = HumanMessage(content=request.prompt)
+            # 构建输入 (带时间戳)
+            input_message = create_timestamped_message(request.prompt, HumanMessage)
             user_input = {"messages": [input_message]}
 
             # 生成消息 ID (用于最终返回)
