@@ -19,6 +19,7 @@
 #### 1. 错误响应格式不统一
 
 **frontend_routes.py**:
+
 ```python
 raise HTTPException(
     status_code=status.HTTP_409_CONFLICT,
@@ -27,6 +28,7 @@ raise HTTPException(
 ```
 
 **planner_routes.py**:
+
 ```python
 raise HTTPException(
     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -35,6 +37,7 @@ raise HTTPException(
 ```
 
 **service.py** (其他端点):
+
 ```python
 raise HTTPException(
     status_code=404,
@@ -45,6 +48,7 @@ raise HTTPException(
 #### 2. 错误码未集中管理
 
 错误码散落在各个文件中：
+
 - `"ACCOUNT_EXISTS"` - frontend_routes.py
 - `"INVALID_CREDENTIALS"` - frontend_routes.py
 - `"API_ERROR"` - planner_routes.py
@@ -53,6 +57,7 @@ raise HTTPException(
 #### 3. 异常处理不完整
 
 某些函数缺少异常处理：
+
 ```python
 async def get_history(...):
     try:
@@ -63,6 +68,7 @@ async def get_history(...):
 ```
 
 但其他地方可能没有：
+
 ```python
 async def some_endpoint(...):
     # ... 业务逻辑 ...
@@ -102,6 +108,7 @@ async def some_endpoint(...):
 ### 方案: 统一错误处理系统（推荐）
 
 **目标**：
+
 1. 统一错误响应格式
 2. 集中管理错误码和消息
 3. 提供全局异常处理器
@@ -338,6 +345,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 #### 3. 更新现有代码使用新的异常系统
 
 **frontend_routes.py**:
+
 ```python
 from schema.errors import AppException, ErrorCode, BusinessError
 
@@ -359,6 +367,7 @@ async def register(...):
 ```
 
 **planner_routes.py**:
+
 ```python
 from schema.errors import AppException, ErrorCode, NotFoundError
 
@@ -420,6 +429,7 @@ async def add_request_id(request: Request, call_next):
 ### 迁移策略
 
 **渐进式迁移**：
+
 1. 先添加错误处理基础设施
 2. 新代码直接使用新系统
 3. 逐步迁移旧代码（不紧急）
@@ -480,4 +490,3 @@ def test_error_response_format():
 ## 更新日志
 
 - 2025-01-27: 创建文档，提供统一错误处理方案
-

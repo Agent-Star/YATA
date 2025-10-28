@@ -6,7 +6,7 @@
 import json
 import logging
 from collections.abc import AsyncGenerator
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -35,7 +35,7 @@ class FrontendMessage(BaseModel):
     """前端消息格式"""
 
     id: str
-    role: str  # "user" | "assistant"
+    role: str | Literal["user", "assistant"]
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
     createdAt: str | None = None

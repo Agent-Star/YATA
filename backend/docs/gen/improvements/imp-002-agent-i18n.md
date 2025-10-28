@@ -55,6 +55,7 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 3. **配置未生效**：接口支持了语言配置，但没有实际作用
 
 **示例场景**：
+
 ```json
 // 前端请求
 {
@@ -97,6 +98,7 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 ### 方案 1: 系统提示词国际化（推荐）
 
 **优势**：
+
 - ✅ 简单直接，改动最小
 - ✅ LLM 理解明确的语言指令
 - ✅ 支持所有主流语言
@@ -215,10 +217,12 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 ### 方案 2: 使用 Few-shot 示例
 
 **优势**：
+
 - ✅ 更稳定的语言输出
 - ✅ 可以控制输出风格
 
 **劣势**：
+
 - ❌ 需要准备多语言示例
 - ❌ 增加 token 消耗
 
@@ -246,10 +250,12 @@ def get_instructions_with_examples(language: str | None = None) -> str:
 ### 方案 3: Prompt Template 系统
 
 **优势**：
+
 - ✅ 更灵活，支持复杂的国际化需求
 - ✅ 可以复用模板
 
 **劣势**：
+
 - ❌ 需要额外的模板管理系统
 - ❌ 工作量较大
 
@@ -264,6 +270,7 @@ def get_instructions_with_examples(language: str | None = None) -> str:
 **方案 1 简化版（在 acall_model 中处理）** - 最佳平衡
 
 **理由**：
+
 1. 实现简单，容易理解
 2. 不涉及复杂的 Runnable 组合
 3. 满足当前需求
@@ -364,6 +371,7 @@ curl -X POST http://localhost:8080/planner/plan/stream \
 ### 1. LLM 能力限制
 
 不是所有 LLM 都擅长所有语言：
+
 - GPT-4: 几乎所有主流语言都很好
 - Claude: 主流语言良好
 - 某些开源模型: 可能仅支持英文和有限的其他语言
@@ -377,6 +385,7 @@ curl -X POST http://localhost:8080/planner/plan/stream \
 ### 3. 混合语言场景
 
 如果用户在一个会话中切换语言（如先用中文，后用英文），需要决定是：
+
 - 选项 A: 每次使用最新的语言配置
 - 选项 B: 保持会话初始语言
 - **建议**：选项 A（每次使用最新配置，更灵活）
@@ -442,4 +451,3 @@ configurable = {
 ## 更新日志
 
 - 2025-01-27: 创建文档，提供系统提示词国际化方案
-

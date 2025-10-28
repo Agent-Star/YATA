@@ -40,6 +40,7 @@ if not created_at:
 3. **依赖框架**：时间戳的存在完全依赖 LangChain 或 Agent 实现，不可控
 
 **示例场景**：
+
 ```
 第一次查询 GET /planner/history:
 - Message 1: createdAt = "2025-01-27T10:00:00Z" (查询时的当前时间)
@@ -77,6 +78,7 @@ if not created_at:
 ### 方案 1: Agent 层添加时间戳（推荐）
 
 **优势**：
+
 - ✅ 数据在源头就准确
 - ✅ 不需要额外存储
 - ✅ 与 LangChain 生态集成良好
@@ -140,10 +142,12 @@ async def generate_events() -> AsyncGenerator[str, None]:
 ### 方案 2: 使用 Checkpointer 时间戳
 
 **优势**：
+
 - ✅ 利用 LangGraph Checkpointer 的内置时间戳
 - ✅ 无需修改 Agent 代码
 
 **劣势**：
+
 - ❌ 需要从 Checkpointer metadata 中提取，可能不够直观
 - ⚠️ 依赖 Checkpointer 实现
 
@@ -183,11 +187,13 @@ def langchain_message_to_frontend(
 ### 方案 3: 数据库层持久化（最稳健）
 
 **优势**：
+
 - ✅ 完全可控，不依赖框架
 - ✅ 可以存储额外的元数据（编辑时间、IP 地址等）
 - ✅ 支持复杂查询和统计
 
 **劣势**：
+
 - ❌ 需要设计新的数据库表
 - ❌ 增加系统复杂度
 - ❌ 可能与 LangGraph Checkpointer 数据重复
@@ -221,6 +227,7 @@ CREATE INDEX idx_message_user ON message_metadata(user_id, created_at);
 **方案 1 (Agent 层添加时间戳)** - 最佳平衡
 
 **理由**：
+
 1. 实现简单，工作量适中
 2. 数据在源头就准确
 3. 不增加系统复杂度
@@ -309,4 +316,3 @@ curl -X GET http://localhost:8080/planner/history \
 ## 更新日志
 
 - 2025-01-27: 创建文档，提出三种改进方案
-
