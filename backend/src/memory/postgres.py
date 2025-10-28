@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres import AsyncPostgresStore
-from psycopg.rows import dict_row
+from psycopg import AsyncConnection
+from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from core.settings import settings
@@ -55,15 +56,13 @@ async def get_postgres_saver():
     validate_postgres_config()
     application_name = settings.POSTGRES_APPLICATION_NAME + "-" + "saver"
 
-    async with AsyncConnectionPool(
+    async with AsyncConnectionPool[AsyncConnection[DictRow]](
         get_postgres_connection_string(),
         min_size=settings.POSTGRES_MIN_CONNECTIONS_PER_POOL,
         max_size=settings.POSTGRES_MAX_CONNECTIONS_PER_POOL,
         # Langgraph requires autocommmit=true and row_factory to be set to dict_row.
         # Application_name is passed so you can identify the connection in your Postgres database connection manager.
         kwargs={"autocommit": True, "row_factory": dict_row, "application_name": application_name},
-        # makes sure that the connection is still valid before using it
-        check=AsyncConnectionPool.check_connection,
     ) as pool:
         try:
             checkpointer = AsyncPostgresSaver(pool)
@@ -84,15 +83,13 @@ async def get_postgres_store():
     validate_postgres_config()
     application_name = settings.POSTGRES_APPLICATION_NAME + "-" + "store"
 
-    async with AsyncConnectionPool(
+    async with AsyncConnectionPool[AsyncConnection[DictRow]](
         get_postgres_connection_string(),
         min_size=settings.POSTGRES_MIN_CONNECTIONS_PER_POOL,
         max_size=settings.POSTGRES_MAX_CONNECTIONS_PER_POOL,
         # Langgraph requires autocommmit=true and row_factory to be set to dict_row
         # Application_name is passed so you can identify the connection in your Postgres database connection manager.
         kwargs={"autocommit": True, "row_factory": dict_row, "application_name": application_name},
-        # makes sure that the connection is still valid before using it
-        check=AsyncConnectionPool.check_connection,
     ) as pool:
         try:
             store = AsyncPostgresStore(pool)
