@@ -121,7 +121,12 @@ app = FastAPI(
 # 允许前端跨域访问, 并支持 Cookie 认证
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 前端开发地址
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ],  # 前端开发地址
     allow_credentials=True,  # 允许携带 Cookie
     allow_methods=["*"],  # 允许所有 HTTP 方法
     allow_headers=["*"],  # 允许所有请求头
