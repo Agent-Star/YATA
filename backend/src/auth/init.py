@@ -61,7 +61,7 @@ async def initialize_super_admin() -> None:
                     # UserManager.create() 会自动哈希密码
                     admin_user = await user_manager.create(
                         UserCreate(
-                            email=f"{admin_username}@admin.local",  # 生成一个管理员邮箱
+                            email="edenwangtempemail@163.com",  # 生成一个管理员邮箱
                             username=admin_username,
                             password=admin_password.get_secret_value(),  # 明文密码, UserManager 会自动哈希
                             is_superuser=True,
