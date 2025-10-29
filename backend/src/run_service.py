@@ -1,23 +1,18 @@
 import asyncio
-import logging
 import sys
 
 import uvicorn
 from dotenv import load_dotenv
 
 from core import settings
+from core.logging_config import get_uvicorn_log_config, setup_logging
 
 load_dotenv()
 
 if __name__ == "__main__":
-    root_logger = logging.getLogger()
-    if root_logger.handlers:
-        print(
-            f"Warning: Root logger already has {len(root_logger.handlers)} handler(s) configured. "
-            f"basicConfig() will be ignored. Current level: {logging.getLevelName(root_logger.level)}"
-        )
+    # 配置统一的彩色日志格式
+    setup_logging(level=settings.LOG_LEVEL.to_logging_level())
 
-    logging.basicConfig(level=settings.LOG_LEVEL.to_logging_level())
     # Set Compatible event loop policy on Windows Systems.
     # On Windows systems, the default ProactorEventLoop can cause issues with
     # certain async database drivers like psycopg (PostgreSQL driver).
@@ -28,10 +23,13 @@ if __name__ == "__main__":
     # https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # 启动 uvicorn 服务器，使用统一的日志配置
     uvicorn.run(
         "service:app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.is_dev(),
         timeout_graceful_shutdown=settings.GRACEFUL_SHUTDOWN_TIMEOUT,
+        log_config=get_uvicorn_log_config(level=settings.LOG_LEVEL.value.lower()),
     )
