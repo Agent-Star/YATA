@@ -66,7 +66,7 @@ function AuthPrompt() {
           throw new Error('PASSWORD_MISMATCH');
         }
 
-        await register({ account: values.account, password: values.password });
+        await register({ account: values.account, email: values.email, password: values.password });
         Toast.success(t('auth.registerSuccess'));
       }
 
@@ -168,6 +168,16 @@ function AuthPrompt() {
             label={t('auth.accountLabel')}
             rules={[{ required: true, message: t('auth.accountRequired') }]}
           />
+          {mode === 'register' ? (
+            <Form.Input
+              field="email"
+              label={t('auth.emailLabel')}
+              rules={[
+                { required: true, message: t('auth.emailRequired') },
+                { type: 'email', message: t('auth.emailInvalid') },
+              ]}
+            />
+          ) : null}
           <Form.Input
             field="password"
             label={t('auth.passwordLabel')}

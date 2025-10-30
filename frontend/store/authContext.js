@@ -28,8 +28,8 @@ export function AuthProvider({ children }) {
   );
 
   const register = useCallback(
-    async ({ account, password }) => {
-      const data = await registerRequest({ account, password });
+    async ({ account, email, password }) => {
+      const data = await registerRequest({ account, email, password });
       dispatch({
         type: 'AUTH_SUCCESS',
         payload: {
@@ -45,6 +45,10 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await logoutRequest();
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[auth] logout request failed', error);
+      }
     } finally {
       dispatch({ type: 'LOGOUT' });
     }

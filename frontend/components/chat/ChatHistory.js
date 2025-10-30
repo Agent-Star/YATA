@@ -4,18 +4,28 @@ import { useTranslation } from 'react-i18next';
 
 function ChatMessage({ message }) {
   const { t } = useTranslation();
-  const { role, content, contentKey, contentParams } = message;
+  const { role, content, contentKey, contentParams, isStreaming } = message;
   const isUser = role === 'user';
   const displayContent = contentKey ? t(contentKey, contentParams) : content;
 
   return (
-    <div className={`chat-message ${isUser ? 'chat-message--user' : 'chat-message--assistant'}`}>
+    <div
+      className={`chat-message ${isUser ? 'chat-message--user' : 'chat-message--assistant'}${
+        isStreaming && !isUser ? ' chat-message--streaming' : ''
+      }`}
+    >
       <Card className="chat-message__card" bordered={false} style={{ maxWidth: '70%' }}>
         <Typography.Text strong={isUser}>
           {isUser ? t('chat.you') : t('chat.assistant')}
         </Typography.Text>
-        <div className="chat-message__content chat-message__markdown">
-          <ReactMarkdown>{displayContent}</ReactMarkdown>
+        <div
+          className={`chat-message__content${
+            isStreaming && !isUser ? ' chat-message__content--streaming' : ''
+          }`}
+        >
+          <div className="chat-message__markdown">
+            <ReactMarkdown>{displayContent}</ReactMarkdown>
+          </div>
         </div>
       </Card>
     </div>
