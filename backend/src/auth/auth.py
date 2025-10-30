@@ -36,7 +36,7 @@ cookie_transport = CookieTransport(
     cookie_domain=None,
     cookie_secure=False,  # 开发/生产都使用 HTTP 时设为 False
     cookie_httponly=True,
-    cookie_samesite="lax",  # 已经开启前端代理, 使用 'lax'
+    cookie_samesite="none",  # 先试试用 none 行不行
 )
 
 # Bearer token 传输方式 (向后兼容, 用于 API 客户端)
