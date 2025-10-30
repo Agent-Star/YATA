@@ -94,7 +94,7 @@ class UserCreate(schemas.BaseUserCreate):
     - is_verified: bool (可选)
     """
 
-    username: Optional[str] = None
+    username: str
     full_name: Optional[str] = None
 
 
