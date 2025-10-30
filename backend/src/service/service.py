@@ -123,18 +123,37 @@ app = FastAPI(
 
 # === CORS 中间件配置 ===
 # 允许前端跨域访问, 并支持 Cookie 认证
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],  # 前端开发地址
-    allow_credentials=True,  # 允许携带 Cookie
-    allow_methods=["*"],  # 允许所有 HTTP 方法
-    allow_headers=["*"],  # 允许所有请求头
-)
+
+if settings.is_dev():
+    # 开发模式：完全开放 CORS，允许任意来源（方便本地开发和测试）
+    logger.info("开发模式：CORS 已完全开放（允许所有来源）")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r".*",  # 匹配所有来源（任意 IP、端口、协议）
+        allow_credentials=True,  # 允许携带 Cookie
+        allow_methods=["*"],  # 允许所有 HTTP 方法
+        allow_headers=["*"],  # 允许所有请求头
+    )
+else:
+    # 生产模式：严格限制 CORS，只允许白名单中的来源
+    allowed_origins = [
+        # 生产环境前端地址
+        "http://166.117.38.176:3000",  # EC2 前端（已加速）
+        "http://166.117.38.176:8080",  # EC2 后端（已加速）
+        "http://13.213.30.181:3000",  # EC2 前端（原始）
+        "http://13.213.30.181:8080",  # EC2 后端（原始）
+        # 如果有域名，添加在这里
+        # "https://yata.example.com",
+    ]
+
+    logger.info(f"生产模式：CORS 仅允许以下来源: {allowed_origins}")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,  # 允许携带 Cookie
+        allow_methods=["*"],  # 允许所有 HTTP 方法
+        allow_headers=["*"],  # 允许所有请求头
+    )
 
 # === 认证路由 ===
 # 注意：认证路由不需要 Bearer token 验证
