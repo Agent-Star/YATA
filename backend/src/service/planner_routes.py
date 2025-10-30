@@ -39,7 +39,7 @@ class FrontendMessage(BaseModel):
     id: str
     role: str | Literal["user", "assistant"]
     content: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] | None = None  # nullable
     createdAt: str | None = None
 
 
@@ -53,14 +53,14 @@ class PlanContext(BaseModel):
     """行程规划上下文"""
 
     language: str | None = Field(default=None, description="UI 语言")
-    history: list[FrontendMessage] = Field(default_factory=list, description="前端传递的历史")
+    history: list[FrontendMessage] | None = Field(default=None, description="前端传递的历史")
 
 
 class PlanRequest(BaseModel):
     """行程规划请求"""
 
     prompt: str = Field(description="用户输入")
-    context: PlanContext = Field(default_factory=PlanContext, description="上下文")
+    context: PlanContext | None = Field(default=None, description="上下文")
 
 
 # === 辅助函数 ===
@@ -182,7 +182,7 @@ async def plan_stream(
 
             # 构建配置
             configurable: dict[str, Any] = {"thread_id": thread_id, "user_id": str(current_user.id)}
-            if request.context.language:
+            if request.context and request.context.language:
                 configurable["language"] = request.context.language
             if settings.DEFAULT_MODEL:
                 configurable["model"] = settings.DEFAULT_MODEL
