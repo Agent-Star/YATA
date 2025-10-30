@@ -91,6 +91,12 @@ class Settings(BaseSettings):
         description="JWT token 有效期 (秒)",
     )
 
+    # Cookie 调试日志
+    COOKIE_DEBUG_LOG: bool = Field(
+        default=False,
+        description="是否启用 Cookie 调试日志（开发调试用）",
+    )
+
     # 超级管理员配置
     SUPER_ADMIN_EMAIL: str | None = None
     SUPER_ADMIN_USERNAME: str | None = None
