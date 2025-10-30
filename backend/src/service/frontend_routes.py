@@ -137,6 +137,17 @@ async def login(
         # 手动设置 Cookie
         cookie_transport = cast(CookieTransport, cookie_auth_backend.transport)
         samesite = cast(Literal["lax", "strict", "none"], cookie_transport.cookie_samesite)
+
+        # 调试日志：输出 Cookie 配置
+        logger.info(
+            f"设置 Cookie: name={cookie_transport.cookie_name}, "
+            f"secure={cookie_transport.cookie_secure}, "
+            f"httponly={cookie_transport.cookie_httponly}, "
+            f"samesite={samesite}, "
+            f"path={cookie_transport.cookie_path}, "
+            f"domain={cookie_transport.cookie_domain}"
+        )
+
         response.set_cookie(
             key=cookie_transport.cookie_name,
             value=token,
