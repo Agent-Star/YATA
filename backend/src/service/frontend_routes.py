@@ -164,11 +164,11 @@ async def login(
         )
 
 
-@frontend_router.post("/logout", status_code=status.HTTP_200_OK)
+@frontend_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     response: Response,
     current_user: Annotated[User, Depends(current_active_user)],
-) -> dict:
+) -> None:
     """
     注销登录
 
@@ -182,7 +182,7 @@ async def logout(
         path=cookie_transport.cookie_path,
         domain=cookie_transport.cookie_domain,
     )
-    return {}
+    return None
 
 
 @frontend_router.get("/profile", response_model=FrontendProfileResponse)
