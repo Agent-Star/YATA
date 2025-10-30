@@ -80,7 +80,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("用户认证数据库表初始化完成")
 
         # Initialize super admin user if configured
-        if settings.SUPER_ADMIN_USERNAME and settings.SUPER_ADMIN_PASSWORD:
+        if (
+            settings.SUPER_ADMIN_EMAIL
+            and settings.SUPER_ADMIN_USERNAME
+            and settings.SUPER_ADMIN_PASSWORD
+        ):
             await initialize_super_admin()
 
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)

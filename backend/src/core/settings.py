@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     )
 
     # 超级管理员配置
+    SUPER_ADMIN_EMAIL: str | None = None
     SUPER_ADMIN_USERNAME: str | None = None
     SUPER_ADMIN_PASSWORD: SecretStr | None = None
 
