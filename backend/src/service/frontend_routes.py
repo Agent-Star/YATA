@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from auth import User, UserCreate, cookie_auth_backend, current_active_user
 from auth.manager import UserManager, get_user_manager
+from core.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -138,15 +139,16 @@ async def login(
         cookie_transport = cast(CookieTransport, cookie_auth_backend.transport)
         samesite = cast(Literal["lax", "strict", "none"], cookie_transport.cookie_samesite)
 
-        # 调试日志：输出 Cookie 配置
-        logger.info(
-            f"设置 Cookie: name={cookie_transport.cookie_name}, "
-            f"secure={cookie_transport.cookie_secure}, "
-            f"httponly={cookie_transport.cookie_httponly}, "
-            f"samesite={samesite}, "
-            f"path={cookie_transport.cookie_path}, "
-            f"domain={cookie_transport.cookie_domain}"
-        )
+        # 调试日志：输出 Cookie 配置（仅在启用调试时）
+        if settings.COOKIE_DEBUG_LOG:
+            logger.info(
+                f"设置 Cookie: name={cookie_transport.cookie_name}, "
+                f"secure={cookie_transport.cookie_secure}, "
+                f"httponly={cookie_transport.cookie_httponly}, "
+                f"samesite={samesite}, "
+                f"path={cookie_transport.cookie_path}, "
+                f"domain={cookie_transport.cookie_domain}"
+            )
 
         response.set_cookie(
             key=cookie_transport.cookie_name,

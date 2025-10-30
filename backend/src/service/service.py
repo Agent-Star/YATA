@@ -166,15 +166,16 @@ else:
 @app.middleware("http")
 async def cookie_debug_middleware(request: Request, call_next: Any) -> Response:
     """记录请求的 Cookie 信息用于调试"""
-    cookies = request.cookies
-    if request.url.path.startswith("/planner") or request.url.path.startswith("/auth"):
-        logger.info(
-            f"[Cookie Debug] {request.method} {request.url.path} - Cookies: {list(cookies.keys())}"
-        )
-        if "yata_auth" in cookies:
-            logger.info(f"[Cookie Debug] yata_auth 存在，长度: {len(cookies['yata_auth'])}")
-        else:
-            logger.warning("[Cookie Debug] ⚠️ yata_auth Cookie 缺失！")
+    if settings.COOKIE_DEBUG_LOG:
+        cookies = request.cookies
+        if request.url.path.startswith("/planner") or request.url.path.startswith("/auth"):
+            logger.info(
+                f"[Cookie Debug] {request.method} {request.url.path} - Cookies: {list(cookies.keys())}"
+            )
+            if "yata_auth" in cookies:
+                logger.info(f"[Cookie Debug] yata_auth 存在，长度: {len(cookies['yata_auth'])}")
+            else:
+                logger.warning("[Cookie Debug] ⚠️ yata_auth Cookie 缺失！")
 
     response = await call_next(request)
     return response
