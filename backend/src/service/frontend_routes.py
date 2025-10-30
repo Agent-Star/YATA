@@ -4,14 +4,18 @@
 提供与前端接口约定一致的路由别名和响应格式.
 """
 
+import logging
 from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_users.authentication import CookieTransport, Strategy
 from pydantic import BaseModel, Field
 
 from auth import User, UserCreate, cookie_auth_backend, current_active_user
-from auth.manager import get_user_manager
+from auth.manager import UserManager, get_user_manager
+
+logger = logging.getLogger(__name__)
 
 
 class FrontendUserResponse(BaseModel):
@@ -65,7 +69,7 @@ def user_to_frontend_format(user: User) -> FrontendUserResponse:
 @frontend_router.post("/register", response_model=FrontendAuthResponse)
 async def register(
     user_create: UserCreate,
-    user_manager=Depends(get_user_manager),
+    user_manager: UserManager = Depends(get_user_manager),
 ) -> FrontendAuthResponse:
     """
     注册新账号
@@ -106,7 +110,7 @@ async def register(
 async def login(
     response: Response,
     credentials: FrontendLoginRequest,
-    user_manager=Depends(get_user_manager),
+    user_manager: UserManager = Depends(get_user_manager),
     strategy: Strategy = Depends(cookie_auth_backend.get_strategy),
 ) -> FrontendAuthResponse:
     """
@@ -118,7 +122,7 @@ async def login(
     try:
         # 验证用户凭据 (支持 email 或 username)
         user = await user_manager.authenticate(
-            {"username": credentials.account, "password": credentials.password}
+            OAuth2PasswordRequestForm(username=credentials.account, password=credentials.password)
         )
 
         if user is None or not user.is_active:
@@ -153,17 +157,18 @@ async def login(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"登录失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "API_ERROR", "message": f"服务器异常: {str(e)}"},
         )
 
 
-@frontend_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@frontend_router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     response: Response,
     current_user: Annotated[User, Depends(current_active_user)],
-) -> None:
+) -> dict:
     """
     注销登录
 
@@ -177,7 +182,7 @@ async def logout(
         path=cookie_transport.cookie_path,
         domain=cookie_transport.cookie_domain,
     )
-    return None
+    return {}
 
 
 @frontend_router.get("/profile", response_model=FrontendProfileResponse)
