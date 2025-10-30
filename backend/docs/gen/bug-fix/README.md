@@ -13,7 +13,8 @@ bug-fix/
 ├── linting-check-complete.md              # 完整项目检查报告（初始）
 ├── linting-complete-detailed-report.md    # 完整项目详细检查报告（逐文件）
 ├── metadata-null-validation-fix.md        # FrontendMessage metadata 字段验证修复
-└── cors-options-auth-fix.md               # CORS OPTIONS 预检请求认证问题修复
+├── cors-options-auth-fix.md               # CORS OPTIONS 预检请求认证问题修复
+└── register-route-priority-fix.md         # 注册接口路由优先级问题修复
 ```
 
 ## 文档说明
@@ -125,6 +126,40 @@ bug-fix/
 
 **状态**: ✅ 已修复并测试
 
+### register-route-priority-fix.md
+
+**内容**: 注册接口路由优先级问题修复
+
+**日期**: 2025-10-30
+
+**问题**: `POST /auth/register` 返回 500 错误，username 重复时未捕获异常
+
+**现象**:
+
+- username 重复时返回 500 Internal Server Error
+- 前端无法收到友好的错误信息（如 `USERNAME_EXISTS`）
+- 后端日志输出完整的 traceback（冗长）
+
+**原因**:
+
+- FastAPI-Users 的默认 register 路由先注册
+- 自定义的 `frontend_router` 后注册
+- FastAPI 按注册顺序匹配路由 → 匹配到默认路由
+- 默认路由只捕获 `UserAlreadyExists`（email 重复），不捕获 `IntegrityError`（username 重复）
+
+**解决方案**:
+
+- 将 `frontend_router` 移到所有 FastAPI-Users 路由之前
+- 确保自定义路由优先匹配
+- 自定义路由包含完整的异常处理（IntegrityError, ValidationError 等）
+
+**影响端点**:
+
+- `POST /auth/register`（现在使用自定义路由，返回 409 + 友好错误信息）
+- `POST /auth/login`（自定义路由，支持 email/username 登录）
+
+**状态**: ✅ 已修复并测试
+
 ## 检查标准
 
 ### 工具配置
@@ -155,6 +190,7 @@ bug-fix/
 Linting 错误数: 0
 业务逻辑 Bug: 2 (已修复)
 CORS/认证 Bug: 1 (已修复)
+路由优先级 Bug: 1 (已修复)
 代码质量评级: A+
 ```
 
@@ -165,6 +201,7 @@ CORS/认证 Bug: 1 (已修复)
 | 2025-01-27 | Linting | bg_task_agent.py 导入路径错误 | ✅ 已修复 |
 | 2025-01-27 | 业务逻辑 | FrontendMessage.metadata 不接受 null | ✅ 已修复 |
 | 2025-01-27 | CORS/认证 | OPTIONS 预检请求触发认证导致 401 | ✅ 已修复 |
+| 2025-10-30 | 路由优先级 | register 接口返回 500（username 重复未捕获） | ✅ 已修复 |
 
 ### 成功因素
 
@@ -330,5 +367,5 @@ linting-fix-{module}-{date}.md
 
 ---
 
-**最后更新**: 2025-01-27 (新增 CORS OPTIONS 预检修复)
+**最后更新**: 2025-10-30 (新增注册接口路由优先级修复)
 

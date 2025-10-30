@@ -251,6 +251,10 @@ async def options_preflight_handler(request: Request, call_next: Any) -> Respons
 # === 认证路由 ===
 # 注意：认证路由不需要 Bearer token 验证
 
+# ⚠️ 前端适配路由必须最先注册，以覆盖 FastAPI-Users 的默认路由
+# 前端适配路由 (提供前端期望的接口格式，包含增强的异常处理)
+app.include_router(frontend_router)
+
 # Cookie 认证路由 (主要方式, 用于前端)
 app.include_router(
     fastapi_users.get_auth_router(cookie_auth_backend),
@@ -288,9 +292,6 @@ app.include_router(
     prefix="/users",
     tags=["users"],
 )
-
-# 前端适配路由 (提供前端期望的接口格式)
-app.include_router(frontend_router)
 
 # 行程规划路由 (智能行程规划功能)
 app.include_router(planner_router)
