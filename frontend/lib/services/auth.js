@@ -9,10 +9,10 @@ export async function login({ account, password }) {
   return data;
 }
 
-export async function register({ account, password }) {
+export async function register({ account, email, password }) {
   const data = await apiRequest('/auth/register', {
     method: 'POST',
-    body: { account, password },
+    body: { username: account, email, password },
   });
 
   return data;

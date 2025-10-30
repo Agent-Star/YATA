@@ -29,6 +29,7 @@ export function usePlanner() {
         role: 'user',
         content: trimmed,
         metadata: null,
+        isStreaming: false,
       };
 
       const conversationHistory = [...state.messages, userMessage].map((message) => ({
@@ -51,12 +52,99 @@ export function usePlanner() {
           role: 'assistant',
           content: '',
           metadata: null,
+          isStreaming: true,
         },
       });
 
+      let accumulated = '';
+      let latestMetadata = null;
+      const tokenQueue = [];
+      let typingTimer = null;
+      let queueDrainResolver = null;
+
+      const splitDelta = (delta) => delta?.match(/(\s+|\S+)/g) || [];
+
+      const getDelay = (chunk) => {
+        if (!chunk || chunk.trim() === '') {
+          return 15;
+        }
+        if (chunk.length > 12) {
+          return 20;
+        }
+        if (chunk.includes('\n')) {
+          return 80;
+        }
+        if (/[，。！？,.!?]/.test(chunk)) {
+          return 100;
+        }
+        return 35;
+      };
+
+      const resolveQueueIfIdle = () => {
+        if (!typingTimer && tokenQueue.length === 0 && queueDrainResolver) {
+          queueDrainResolver();
+          queueDrainResolver = null;
+        }
+      };
+
+      const cancelTyping = () => {
+        if (typingTimer) {
+          clearTimeout(typingTimer);
+          typingTimer = null;
+        }
+        tokenQueue.length = 0;
+        resolveQueueIfIdle();
+      };
+
+      const flushQueue = () => {
+        if (tokenQueue.length === 0) {
+          typingTimer = null;
+          resolveQueueIfIdle();
+          return;
+        }
+
+        const nextChunk = tokenQueue.shift();
+        accumulated += nextChunk;
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[planner] stream token', nextChunk);
+        }
+        dispatch({
+          type: 'UPDATE_MESSAGE',
+          payload: {
+            id: assistantMessageId,
+            updates: {
+              content: accumulated,
+            },
+          },
+        });
+
+        typingTimer = setTimeout(() => {
+          typingTimer = null;
+          flushQueue();
+        }, getDelay(nextChunk));
+      };
+
+      const enqueueTokens = (delta) => {
+        const pieces = splitDelta(delta);
+        if (pieces.length === 0) {
+          return;
+        }
+        tokenQueue.push(...pieces);
+        if (!typingTimer) {
+          flushQueue();
+        }
+      };
+
+      const waitForQueueToDrain = () =>
+        new Promise((resolve) => {
+          if (!typingTimer && tokenQueue.length === 0) {
+            resolve();
+          } else {
+            queueDrainResolver = resolve;
+          }
+        });
+
       try {
-        let accumulated = '';
-        let latestMetadata = null;
 
         const result = await streamPlan({
           prompt: trimmed,
@@ -67,16 +155,7 @@ export function usePlanner() {
               return;
             }
 
-            accumulated += delta;
-            dispatch({
-              type: 'UPDATE_MESSAGE',
-              payload: {
-                id: assistantMessageId,
-                updates: {
-                  content: accumulated,
-                },
-              },
-            });
+            enqueueTokens(delta);
           },
           onMetadata: (metadata) => {
             latestMetadata = metadata;
@@ -93,6 +172,8 @@ export function usePlanner() {
         });
 
         const finalMetadata = result?.metadata ?? latestMetadata;
+        await waitForQueueToDrain();
+        cancelTyping();
 
         dispatch({
           type: 'UPDATE_MESSAGE',
@@ -102,10 +183,12 @@ export function usePlanner() {
               content: accumulated,
               metadata: finalMetadata || null,
               serverMessageId: result?.messageId || null,
+              isStreaming: false,
             },
           },
         });
       } catch (error) {
+        cancelTyping();
         dispatch({
           type: 'UPDATE_MESSAGE',
           payload: {
@@ -113,10 +196,21 @@ export function usePlanner() {
             updates: {
               content: t('chat.errorMessage'),
               metadata: null,
+              isStreaming: false,
             },
           },
         });
       } finally {
+        cancelTyping();
+        dispatch({
+          type: 'UPDATE_MESSAGE',
+          payload: {
+            id: assistantMessageId,
+            updates: {
+              isStreaming: false,
+            },
+          },
+        });
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     },
@@ -148,6 +242,7 @@ export function usePlanner() {
             role: item.role,
             content: item.content,
             metadata: item.metadata || null,
+            isStreaming: false,
           }))
         : null;
 
@@ -156,6 +251,7 @@ export function usePlanner() {
         role: 'assistant',
         content: t('chat.initialMessage'),
         metadata: null,
+        isStreaming: false,
       };
 
       const nextMessages =
@@ -171,6 +267,7 @@ export function usePlanner() {
             role: 'assistant',
             content: t('chat.initialMessage'),
             metadata: null,
+            isStreaming: false,
           },
         ],
       });

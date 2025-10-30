@@ -203,6 +203,10 @@ body {
   color: var(--semi-color-text-0);
 }
 
+.chat-message__content--streaming {
+  animation: chat-stream-fade 0.2s ease-out;
+}
+
 .chat-message__markdown {
   display: block;
   white-space: normal;
@@ -248,6 +252,15 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 48px;
+}
+
+@keyframes chat-stream-fade {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .auth-prompt {
