@@ -188,15 +188,63 @@ async def options_preflight_handler(request: Request, call_next: Any) -> Respons
     如果 OPTIONS 请求到达需要认证的路由，会触发认证检查并返回 401，
     导致浏览器阻止实际请求。
     
-    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK。
+    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK，
+    并手动添加必要的 CORS 响应头。
     """
     if request.method == "OPTIONS":
-        # 直接返回 200 OK，CORS 响应头由 CORSMiddleware 添加
-        return Response(status_code=200)
+        # 获取请求的 Origin
+        origin = request.headers.get("origin", "*")
+        
+        # 创建响应并添加 CORS 响应头
+        response = Response(status_code=200)
+        
+        # 根据开发/生产模式设置 CORS 响应头
+        if settings.is_dev():
+            # 开发模式：允许任意来源
+            response.headers["Access-Control-Allow-Origin"] = origin
+        else:
+            # 生产模式：检查是否在白名单中
+            allowed_origins = [
+                "http://166.117.38.176:3000",
+                "http://166.117.38.176:8080",
+                "http://13.213.30.181:3000",
+                "http://13.213.30.181:8080",
+            ]
+            if origin in allowed_origins:
+                response.headers["Access-Control-Allow-Origin"] = origin
+            else:
+                # 如果不在白名单，返回第一个允许的来源（或拒绝）
+                response.headers["Access-Control-Allow-Origin"] = allowed_origins[0] if allowed_origins else "*"
+        
+        # 添加其他必要的 CORS 响应头
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "600"  # 预检结果缓存 10 分钟
+        
+        return response
     
     # 非 OPTIONS 请求，继续正常处理
     response = await call_next(request)
     return response
+```
+
+**⚠️ 重要说明：为什么要手动添加 CORS 响应头？**
+
+FastAPI/Starlette 的中间件执行顺序是**栈结构**（后添加先执行）：
+
+```
+请求流程：
+  → options_preflight_handler (后添加，先执行)
+  → CORSMiddleware (先添加，后执行)
+  → 路由处理器
+
+如果 options_preflight_handler 直接返回响应：
+  → 绕过 CORSMiddleware ❌
+  → 响应没有 CORS 响应头 ❌
+  → 浏览器 CORS 错误 ❌
+
+所以必须手动添加 CORS 响应头！
 ```
 
 ---
@@ -638,3 +686,46 @@ FastAPI 的 CORSMiddleware 只添加响应头，不处理 OPTIONS 请求的认�
 **修复状态**: ✅ 已完成  
 **测试状态**: ✅ 已验证  
 **文档状态**: ✅ 已记录
+
+---
+
+## 🔄 更新记录
+
+### 2025-01-27 - 第二次修复：添加 CORS 响应头
+
+**问题**：虽然 OPTIONS 返回 200 OK，但浏览器仍报 CORS 错误
+
+**原因**：
+
+- OPTIONS 中间件直接返回响应，绕过了 CORSMiddleware
+- 响应缺少必要的 CORS 响应头：
+  - `Access-Control-Allow-Origin`
+  - `Access-Control-Allow-Credentials`
+  - `Access-Control-Allow-Methods`
+  - `Access-Control-Allow-Headers`
+
+**修复**：
+在 OPTIONS 中间件中手动添加所有必要的 CORS 响应头
+
+**影响端点**：
+
+- `/auth/login`（登录）
+- `/auth/profile`（个人资料）
+- 所有其他需要认证的端点
+
+**关键改进**：
+
+```python
+# 修复前
+if request.method == "OPTIONS":
+    return Response(status_code=200)  # ❌ 缺少 CORS 响应头
+
+# 修复后
+if request.method == "OPTIONS":
+    response = Response(status_code=200)
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response  # ✅ 包含完整的 CORS 响应头
+```

@@ -137,7 +137,12 @@ if settings.is_dev():
 else:
     # 生产模式：严格限制 CORS，只允许白名单中的来源
     allowed_origins = [
-        # 生产环境前端地址
+        # 本地开发
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+        # EC2 生产环境
         "http://166.117.38.176:3000",  # EC2 前端（已加速）
         "http://166.117.38.176:8080",  # EC2 后端（已加速）
         "http://13.213.30.181:3000",  # EC2 前端（原始）
@@ -167,11 +172,56 @@ async def options_preflight_handler(request: Request, call_next: Any) -> Respons
     如果 OPTIONS 请求到达需要认证的路由，会触发认证检查并返回 401，
     导致浏览器阻止实际请求。
 
-    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK。
+    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK，
+    并手动添加必要的 CORS 响应头。
     """
     if request.method == "OPTIONS":
-        # 直接返回 200 OK，CORS 响应头由 CORSMiddleware 添加
-        return Response(status_code=200)
+        # 获取请求的 Origin
+        origin = request.headers.get("origin")
+
+        # 创建响应
+        response = Response(status_code=200)
+
+        # 定义白名单（开发和生产都需要）
+        allowed_origins = [
+            # 本地开发
+            "http://localhost:3000",
+            "http://localhost:8080",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8080",
+            # EC2 生产环境
+            "http://166.117.38.176:3000",
+            "http://166.117.38.176:8080",
+            "http://13.213.30.181:3000",
+            "http://13.213.30.181:8080",
+        ]
+
+        # 检查 origin 是否在白名单中
+        if settings.is_dev():
+            # 开发模式：允许任意来源
+            if origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+            else:
+                response.headers["Access-Control-Allow-Origin"] = "*"
+        else:
+            # 生产模式：严格检查白名单
+            if origin and origin in allowed_origins:
+                response.headers["Access-Control-Allow-Origin"] = origin
+            elif origin:
+                # ⚠️ 不在白名单的来源：返回 403 或不设置 Allow-Origin
+                logger.warning(f"CORS 预检被拒绝：Origin '{origin}' 不在白名单中")
+                # 不设置 Access-Control-Allow-Origin，浏览器会报 CORS 错误
+                return Response(status_code=403, content="Origin not allowed")
+
+        # 添加其他必要的 CORS 响应头
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, Authorization, Accept, Origin, User-Agent, DNT, Cache-Control, X-Mx-ReqToken, Keep-Alive, X-Requested-With, If-Modified-Since"
+        )
+        response.headers["Access-Control-Max-Age"] = "600"  # 预检结果缓存 10 分钟
+
+        return response
 
     # 非 OPTIONS 请求，继续正常处理
     response = await call_next(request)
