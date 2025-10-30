@@ -18,6 +18,33 @@
 
 **后果**：浏览器拒绝发送 Cookie（跨域请求被阻止）
 
+### 1.1 特殊情况：API 测试工具的随机端口
+
+**问题**：Apifox/Postman 等 API 测试工具每次请求使用**随机的临时端口**
+
+**现象**（日志示例）：
+
+```
+INFO: 154.92.130.90:20927 - "POST /auth/login HTTP/1.1" 200
+INFO: 154.92.130.90:58783 - "OPTIONS /auth/login HTTP/1.1" 405
+INFO: 154.92.130.90:23211 - "OPTIONS /auth/login HTTP/1.1" 200
+INFO: 154.92.130.90:27157 - "OPTIONS /auth/login HTTP/1.1" 200
+```
+
+每次端口都不同（20927, 58783, 23211...），导致无法在 `allow_origins` 中枚举所有端口。
+
+**解决方案**：使用 `allow_origin_regex` 正则匹配：
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", ...],
+    allow_origin_regex=r"http://154\.92\.130\.90:\d+",  # 匹配该 IP 的所有端口
+    allow_credentials=True,
+    ...
+)
+```
+
 ### 2. Cookie Secure 属性冲突
 
 **当前配置**（`auth/auth.py` 第 37 行）：
