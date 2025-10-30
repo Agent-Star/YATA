@@ -34,9 +34,9 @@ cookie_transport = CookieTransport(
     cookie_max_age=settings.AUTH_JWT_LIFETIME_SECONDS,
     cookie_path="/",
     cookie_domain=None,
-    cookie_secure=not settings.is_dev(),
+    cookie_secure=False,  # 开发/生产都使用 HTTP 时设为 False
     cookie_httponly=True,
-    cookie_samesite="lax",
+    cookie_samesite="lax",  # 已经开启前端代理, 使用 'lax'
 )
 
 # Bearer token 传输方式 (向后兼容, 用于 API 客户端)
