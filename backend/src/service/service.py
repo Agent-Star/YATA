@@ -137,6 +137,9 @@ if settings.is_dev():
 else:
     # 生产模式：严格限制 CORS，只允许白名单中的来源
     allowed_origins = [
+        # localhost
+        "http://localhost:3000",
+        "http://localhost:8080",
         # 生产环境前端地址
         "http://166.117.38.176:3000",  # EC2 前端（已加速）
         "http://166.117.38.176:8080",  # EC2 后端（已加速）
@@ -167,11 +170,45 @@ async def options_preflight_handler(request: Request, call_next: Any) -> Respons
     如果 OPTIONS 请求到达需要认证的路由，会触发认证检查并返回 401，
     导致浏览器阻止实际请求。
 
-    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK。
+    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK，
+    并手动添加必要的 CORS 响应头。
     """
     if request.method == "OPTIONS":
-        # 直接返回 200 OK，CORS 响应头由 CORSMiddleware 添加
-        return Response(status_code=200)
+        # 获取请求的 Origin
+        origin = request.headers.get("origin", "*")
+
+        # 创建响应并添加 CORS 响应头
+        response = Response(status_code=200)
+
+        # 根据开发/生产模式设置 CORS 响应头
+        if settings.is_dev():
+            # 开发模式：允许任意来源
+            response.headers["Access-Control-Allow-Origin"] = origin
+        else:
+            # 生产模式：检查是否在白名单中
+            allowed_origins = [
+                "http://localhost:3000",
+                "http://localhost:8080",
+                "http://166.117.38.176:3000",
+                "http://166.117.38.176:8080",
+                "http://13.213.30.181:3000",
+                "http://13.213.30.181:8080",
+            ]
+            if origin in allowed_origins:
+                response.headers["Access-Control-Allow-Origin"] = origin
+            else:
+                # 如果不在白名单，返回第一个允许的来源（或拒绝）
+                response.headers["Access-Control-Allow-Origin"] = (
+                    allowed_origins[0] if allowed_origins else "*"
+                )
+
+        # 添加其他必要的 CORS 响应头
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "600"  # 预检结果缓存 10 分钟
+
+        return response
 
     # 非 OPTIONS 请求，继续正常处理
     response = await call_next(request)
