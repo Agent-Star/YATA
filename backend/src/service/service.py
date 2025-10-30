@@ -123,14 +123,25 @@ app = FastAPI(
 
 # === CORS 中间件配置 ===
 # 允许前端跨域访问, 并支持 Cookie 认证
+allowed_origins = [
+    # 本地开发环境
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    # EC2 生产环境（已加速）
+    "http://166.117.38.176:3000",
+    "http://166.117.38.176:8080",
+    # EC2 生产环境（原始）
+    "http://13.213.30.181:3000",
+    "http://13.213.30.181:8080",
+    # Apifox 测试地址
+    "http://154.92.130.90:3791",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],  # 前端开发地址
+    allow_origins=allowed_origins,
     allow_credentials=True,  # 允许携带 Cookie
     allow_methods=["*"],  # 允许所有 HTTP 方法
     allow_headers=["*"],  # 允许所有请求头
