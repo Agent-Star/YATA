@@ -11,7 +11,9 @@ bug-fix/
 ├── linting-check-agents-detailed.md       # agents/ 模块详细检查报告（逐文件）
 ├── linting-fix-bg-task-agent-2025-01-27.md # bg_task_agent.py 修复记录
 ├── linting-check-complete.md              # 完整项目检查报告（初始）
-└── linting-complete-detailed-report.md    # 完整项目详细检查报告（逐文件）
+├── linting-complete-detailed-report.md    # 完整项目详细检查报告（逐文件）
+├── metadata-null-validation-fix.md        # FrontendMessage metadata 字段验证修复
+└── cors-options-auth-fix.md               # CORS OPTIONS 预检请求认证问题修复
 ```
 
 ## 文档说明
@@ -66,6 +68,63 @@ bug-fix/
 
 **最终状态**: ✅ 零错误
 
+### metadata-null-validation-fix.md
+
+**内容**: FrontendMessage 模型的 metadata 字段验证错误修复
+
+**日期**: 2025-01-27
+
+**问题**: 前端发送的历史消息中 `metadata: null` 导致 422 验证错误
+
+**原因**:
+
+- 原定义：`metadata: dict[str, Any] = Field(default_factory=dict)`
+- 不接受 `null` 值，只接受 `dict` 类型
+
+**解决方案**:
+
+- 新定义：`metadata: dict[str, Any] | None = None`
+- 允许 `null`、`{}`、有效 dict 三种情况
+
+**影响端点**:
+
+- `POST /planner/plan/stream`（接收请求）
+- `GET /planner/history`（返回响应）
+
+**状态**: ✅ 已修复并测试
+
+### cors-options-auth-fix.md
+
+**内容**: CORS OPTIONS 预检请求认证问题修复
+
+**日期**: 2025-01-27
+
+**问题**: 前端跨域请求时 OPTIONS 预检失败（401 Unauthorized）
+
+**现象**:
+
+- Apifox 测试正常（直接 GET，无 OPTIONS）
+- 前端浏览器失败（先 OPTIONS，触发认证，返回 401）
+
+**原因**:
+
+- OPTIONS 请求到达需要认证的路由
+- 触发 `current_active_user` 依赖注入
+- OPTIONS 请求无认证信息 → 401
+- 浏览器阻止后续的实际请求
+
+**解决方案**:
+
+- 添加 HTTP 中间件拦截所有 OPTIONS 请求
+- 在依赖注入之前直接返回 200 OK
+- 不影响其他请求（GET/POST 仍需认证）
+
+**影响端点**:
+
+- 所有需要认证的端点（OPTIONS 预检不再触发认证）
+
+**状态**: ✅ 已修复并测试
+
 ## 检查标准
 
 ### 工具配置
@@ -93,10 +152,19 @@ bug-fix/
 
 ```
 总检查文件数: 44+
-发现错误数: 0
-修复错误数: 0 (无需修复)
+Linting 错误数: 0
+业务逻辑 Bug: 2 (已修复)
+CORS/认证 Bug: 1 (已修复)
 代码质量评级: A+
 ```
+
+### 已修复的 Bug
+
+| 日期 | 类型 | 问题 | 状态 |
+|------|------|------|------|
+| 2025-01-27 | Linting | bg_task_agent.py 导入路径错误 | ✅ 已修复 |
+| 2025-01-27 | 业务逻辑 | FrontendMessage.metadata 不接受 null | ✅ 已修复 |
+| 2025-01-27 | CORS/认证 | OPTIONS 预检请求触发认证导致 401 | ✅ 已修复 |
 
 ### 成功因素
 
@@ -262,5 +330,5 @@ linting-fix-{module}-{date}.md
 
 ---
 
-**最后更新**: 2025-01-27
+**最后更新**: 2025-01-27 (新增 CORS OPTIONS 预检修复)
 

@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -154,6 +154,29 @@ else:
         allow_methods=["*"],  # 允许所有 HTTP 方法
         allow_headers=["*"],  # 允许所有请求头
     )
+
+
+# === OPTIONS 预检请求处理中间件 ===
+# 直接响应 OPTIONS 请求，避免触发认证检查
+@app.middleware("http")
+async def options_preflight_handler(request: Request, call_next: Any) -> Response:
+    """
+    处理 CORS 预检请求 (OPTIONS)
+
+    浏览器在发送跨域请求前，会先发送 OPTIONS 预检请求。
+    如果 OPTIONS 请求到达需要认证的路由，会触发认证检查并返回 401，
+    导致浏览器阻止实际请求。
+
+    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK。
+    """
+    if request.method == "OPTIONS":
+        # 直接返回 200 OK，CORS 响应头由 CORSMiddleware 添加
+        return Response(status_code=200)
+
+    # 非 OPTIONS 请求，继续正常处理
+    response = await call_next(request)
+    return response
+
 
 # === 认证路由 ===
 # 注意：认证路由不需要 Bearer token 验证
