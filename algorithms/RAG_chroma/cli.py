@@ -40,6 +40,7 @@ def main():
         print("Missing 'question' in input JSON", file=sys.stderr)
         sys.exit(1)
 
+
     # prefer explicit city arg over payload city
     city: Optional[str] = args.city or data.get("city")
     # prefer explicit top_k arg over payload top_k

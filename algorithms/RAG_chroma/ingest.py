@@ -10,6 +10,7 @@ from db import init_db, insert_documents, delete_by_source
 from embedder import embed_texts, get_embedding_dimension
 
 
+
 def _select_url(urls: Dict[str, Any]) -> str:
     """从 urls 字典中优先选择合适的 URL"""
     if not isinstance(urls, dict):

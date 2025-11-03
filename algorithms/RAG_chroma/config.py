@@ -7,6 +7,7 @@ from dataclasses import dataclass
 PROJECT_ROOT = Path(__file__).parent.absolute()
 
 
+
 @dataclass
 class Settings:
     # Chroma 配置

@@ -6,7 +6,7 @@
   "urls": {
     "wikipedia": "https://en.wikipedia.org/wiki/Kyoto",
     "weatherapi_query": "http://api.weatherapi.com/v1/history.json?q=35.0115754,135.7681441&dt=2025-11-01",
-    "osm_location": "https://www.openstreetmap.org/search?query=Kyoto%20jp"
+    "osm_location": " https://www.openstreetmap.org/search?query=Kyoto%20jp"
   },
   "location": {
     "latitude": 35.0115754,

@@ -9,6 +9,7 @@ _client: chromadb.ClientAPI | None = None
 _collection: chromadb.Collection | None = None
 
 
+
 def _get_client() -> chromadb.ClientAPI:
     """获取 Chroma 客户端（持久化到本地目录）"""
     global _client

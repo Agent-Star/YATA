@@ -9,6 +9,7 @@ _model: SentenceTransformer | None = None
 _reranker: CrossEncoder | None = None
 
 
+
 def _get_model() -> SentenceTransformer:
     global _model
     if _model is None:

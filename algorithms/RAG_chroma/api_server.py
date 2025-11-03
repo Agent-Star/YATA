@@ -29,7 +29,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 class SearchRequest(BaseModel):
     """搜索请求"""
     query: str

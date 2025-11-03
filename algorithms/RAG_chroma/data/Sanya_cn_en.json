@@ -6,7 +6,7 @@
   "urls": {
     "wikipedia": "https://en.wikipedia.org/wiki/Sanya",
     "weatherapi_query": "http://api.weatherapi.com/v1/history.json?q=18.2534658,109.5034392&dt=2025-11-01",
-    "osm_location": "https://www.openstreetmap.org/search?query=Sanya%20cn"
+    "osm_location": " https://www.openstreetmap.org/search?query=Sanya%20cn"
   },
   "location": {
     "latitude": 18.2534658,

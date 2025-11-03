@@ -7,7 +7,7 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Beijing",
     "wikipedia_title": "北京市",
     "weatherapi_query": "http://api.weatherapi.com/v1/history.json?q=40.190632,116.412144&dt=2025-10-31",
-    "osm_location": "https://www.openstreetmap.org/search?query=Beijing%20cn"
+    "osm_location": " https://www.openstreetmap.org/search?query=Beijing%20cn"
   },
   "location": {
     "latitude": 40.190632,

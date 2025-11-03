@@ -5,6 +5,7 @@ from embedder import embed_texts, rerank
 from db import vector_search
 
 
+
 def _expand_query(query: str) -> str:
     """简单的查询扩展：为查询添加相关术语以提升召回率"""
     # 常见旅游相关词汇扩展

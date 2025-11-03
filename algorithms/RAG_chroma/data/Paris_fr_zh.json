@@ -7,7 +7,7 @@
     "wikipedia": "https://en.wikipedia.org/wiki/Paris",
     "wikipedia_title": "巴黎",
     "weatherapi_query": "http://api.weatherapi.com/v1/history.json?q=48.8534951,2.3483915&dt=2025-10-31",
-    "osm_location": "https://www.openstreetmap.org/search?query=Paris%20fr"
+    "osm_location": " https://www.openstreetmap.org/search?query=Paris%20fr"
   },
   "location": {
     "latitude": 48.8534951,
