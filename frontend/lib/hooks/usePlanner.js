@@ -1,0 +1,288 @@
+import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { usePlannerContext } from '@store/plannerContext';
+import { streamPlan, fetchHistory } from '@lib/services/aiPlanner';
+
+export function usePlanner() {
+  const { t, i18n } = useTranslation();
+  const { state, dispatch } = usePlannerContext();
+  const { hasInitializedHistory } = state;
+
+  const setActiveSection = useCallback(
+    (sectionKey) => {
+      dispatch({ type: 'SET_ACTIVE_SECTION', payload: sectionKey });
+    },
+    [dispatch]
+  );
+
+  const sendMessage = useCallback(
+    async (content) => {
+      const trimmed = content.trim();
+
+      if (!trimmed) {
+        return;
+      }
+
+      const timestamp = Date.now();
+      const userMessage = {
+        id: `user-${timestamp}`,
+        role: 'user',
+        content: trimmed,
+        metadata: null,
+        isStreaming: false,
+      };
+
+      const conversationHistory = [...state.messages, userMessage].map((message) => ({
+        id: message.id,
+        role: message.role,
+        content:
+          message.content ||
+          (message.contentKey ? i18n.t(message.contentKey, message.contentParams) : ''),
+        metadata: message.metadata || null,
+      }));
+
+      dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+      dispatch({ type: 'SET_LOADING', payload: true });
+
+      const assistantMessageId = `assistant-${timestamp}`;
+      dispatch({
+        type: 'ADD_MESSAGE',
+        payload: {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          metadata: null,
+          isStreaming: true,
+        },
+      });
+
+      let accumulated = '';
+      let latestMetadata = null;
+      const tokenQueue = [];
+      let typingTimer = null;
+      let queueDrainResolver = null;
+
+      const splitDelta = (delta) => delta?.match(/(\s+|\S+)/g) || [];
+
+      const getDelay = (chunk) => {
+        if (!chunk || chunk.trim() === '') {
+          return 15;
+        }
+        if (chunk.length > 12) {
+          return 20;
+        }
+        if (chunk.includes('\n')) {
+          return 80;
+        }
+        if (/[，。！？,.!?]/.test(chunk)) {
+          return 100;
+        }
+        return 35;
+      };
+
+      const resolveQueueIfIdle = () => {
+        if (!typingTimer && tokenQueue.length === 0 && queueDrainResolver) {
+          queueDrainResolver();
+          queueDrainResolver = null;
+        }
+      };
+
+      const cancelTyping = () => {
+        if (typingTimer) {
+          clearTimeout(typingTimer);
+          typingTimer = null;
+        }
+        tokenQueue.length = 0;
+        resolveQueueIfIdle();
+      };
+
+      const flushQueue = () => {
+        if (tokenQueue.length === 0) {
+          typingTimer = null;
+          resolveQueueIfIdle();
+          return;
+        }
+
+        const nextChunk = tokenQueue.shift();
+        accumulated += nextChunk;
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[planner] stream token', nextChunk);
+        }
+        dispatch({
+          type: 'UPDATE_MESSAGE',
+          payload: {
+            id: assistantMessageId,
+            updates: {
+              content: accumulated,
+            },
+          },
+        });
+
+        typingTimer = setTimeout(() => {
+          typingTimer = null;
+          flushQueue();
+        }, getDelay(nextChunk));
+      };
+
+      const enqueueTokens = (delta) => {
+        const pieces = splitDelta(delta);
+        if (pieces.length === 0) {
+          return;
+        }
+        tokenQueue.push(...pieces);
+        if (!typingTimer) {
+          flushQueue();
+        }
+      };
+
+      const waitForQueueToDrain = () =>
+        new Promise((resolve) => {
+          if (!typingTimer && tokenQueue.length === 0) {
+            resolve();
+          } else {
+            queueDrainResolver = resolve;
+          }
+        });
+
+      try {
+
+        const result = await streamPlan({
+          prompt: trimmed,
+          language: i18n.language,
+          history: conversationHistory,
+          onToken: (delta) => {
+            if (!delta) {
+              return;
+            }
+
+            enqueueTokens(delta);
+          },
+          onMetadata: (metadata) => {
+            latestMetadata = metadata;
+            dispatch({
+              type: 'UPDATE_MESSAGE',
+              payload: {
+                id: assistantMessageId,
+                updates: {
+                  metadata,
+                },
+              },
+            });
+          },
+        });
+
+        const finalMetadata = result?.metadata ?? latestMetadata;
+        await waitForQueueToDrain();
+        cancelTyping();
+
+        dispatch({
+          type: 'UPDATE_MESSAGE',
+          payload: {
+            id: assistantMessageId,
+            updates: {
+              content: accumulated,
+              metadata: finalMetadata || null,
+              serverMessageId: result?.messageId || null,
+              isStreaming: false,
+            },
+          },
+        });
+      } catch (error) {
+        cancelTyping();
+        dispatch({
+          type: 'UPDATE_MESSAGE',
+          payload: {
+            id: assistantMessageId,
+            updates: {
+              content: t('chat.errorMessage'),
+              metadata: null,
+              isStreaming: false,
+            },
+          },
+        });
+      } finally {
+        cancelTyping();
+        dispatch({
+          type: 'UPDATE_MESSAGE',
+          payload: {
+            id: assistantMessageId,
+            updates: {
+              isStreaming: false,
+            },
+          },
+        });
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+    [dispatch, i18n, state.messages, t]
+  );
+
+  const triggerQuickAction = useCallback(
+    async (action) => {
+      dispatch({ type: 'PREPEND_QUICK_ACTION', payload: action });
+      const promptValue =
+        typeof action.prompt === 'string'
+          ? action.prompt
+          : action.prompt?.[i18n.language] || action.prompt?.en || '';
+
+      if (promptValue) {
+        await sendMessage(promptValue);
+      }
+    },
+    [dispatch, i18n.language, sendMessage]
+  );
+
+  const loadHistory = useCallback(async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const history = await fetchHistory();
+      const mappedMessages = Array.isArray(history?.messages)
+        ? history.messages.map((item) => ({
+            id: item.id,
+            role: item.role,
+            content: item.content,
+            metadata: item.metadata || null,
+            isStreaming: false,
+          }))
+        : null;
+
+      const fallbackMessage = {
+        id: 'assistant-welcome',
+        role: 'assistant',
+        content: t('chat.initialMessage'),
+        metadata: null,
+        isStreaming: false,
+      };
+
+      const nextMessages =
+        mappedMessages && mappedMessages.length > 0 ? mappedMessages : [fallbackMessage];
+
+      dispatch({ type: 'SET_MESSAGES', payload: nextMessages });
+    } catch (error) {
+      dispatch({
+        type: 'SET_MESSAGES',
+        payload: [
+          {
+            id: 'assistant-welcome',
+            role: 'assistant',
+            content: t('chat.initialMessage'),
+            metadata: null,
+            isStreaming: false,
+          },
+        ],
+      });
+    } finally {
+      dispatch({ type: 'SET_HISTORY_INITIALIZED' });
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  }, [dispatch, t]);
+
+  return {
+    state,
+    sendMessage,
+    triggerQuickAction,
+    setActiveSection,
+    loadHistory,
+    hasInitializedHistory,
+  };
+}
