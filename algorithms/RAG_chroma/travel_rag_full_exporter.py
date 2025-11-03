@@ -25,10 +25,10 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "data")
 WIKI_LANGUAGES = ["en", "zh"]  # 英文优先，中文 fallback
 USER_AGENT = "TravelRAG-Agent/1.0 (contact@team.com)"
 
-# 🔑 替换为你自己的 WeatherAPI Key
-WEATHERAPI_KEY = "ea4ff3ee717d454c9cc84057253110"
+# 替换为你自己的 WeatherAPI Key
+WEATHERAPI_KEY = "your-key-here"
 
-# 🧠 使用 BGE-M3 模型（1024维，支持多语言）
+# 使用 BGE-M3 模型（1024维，支持多语言）
 MODEL_NAME = "BAAI/bge-m3"
 model = SentenceTransformer(MODEL_NAME)
 
