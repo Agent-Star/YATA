@@ -157,9 +157,9 @@ curl -X POST "http://localhost:8001/search" \
   -d '{"query": "推荐巴黎旅游景点", "top_k": 3}'
 ```
 
-## 项目结构
+## 项目结构 (文件树)
 
-```
+```txt
 .
 ├── api_server.py          # FastAPI 服务
 ├── cli.py                 # 命令行工具
