@@ -28,9 +28,41 @@
 
 ### 安装依赖
 
+先安装 `uv` 包管理器:
+
+- linux / macos
+
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+- windows
+
+  ```powershell
+  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+  ```
+
+然后配置依赖:
+
 ```bash
-pip install fastapi uvicorn chromadb sentence-transformers numpy pydantic
+uv sync
 ```
+
+最后加载虚拟环境:
+
+- linux / macos
+
+  ```bash
+  uv venv
+  source .venv/bin/activate
+  ```
+
+- windows
+
+  ```powershell
+  uv venv
+  ./.venv/Scripts/activate
+  ```
 
 ### 初始化数据库
 
