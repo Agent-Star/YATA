@@ -18,11 +18,11 @@
 
 ## 功能特性
 
--  **向量检索**：基于 BGE-M3 模型（1024维）的语义搜索
--  **多城市支持**：支持按城市过滤检索结果
--  **智能重排序**：可选的重排序功能提升结果准确性
--  **ChromaDB 持久化**：数据持久化存储，支持增量更新
--  **RESTful API**：提供简洁的 HTTP 接口，便于集成
+- **向量检索**：基于 BGE-M3 模型（1024维）的语义搜索
+- **多城市支持**：支持按城市过滤检索结果
+- **智能重排序**：可选的重排序功能提升结果准确性
+- **ChromaDB 持久化**：数据持久化存储，支持增量更新
+- **RESTful API**：提供简洁的 HTTP 接口，便于集成
 
 ## 快速开始
 
@@ -67,6 +67,7 @@ python cli.py --input question.json --city Paris --top_k 5
 检查服务状态。
 
 **响应示例：**
+
 ```json
 {
   "status": "ok"
@@ -90,6 +91,7 @@ python cli.py --input question.json --city Paris --top_k 5
 | top_k  | integer | 返回结果数量（可选）| 否   |
 
 **请求示例：**
+
 ```json
 {
   "query": "巴黎有哪些著名景点",
@@ -99,6 +101,7 @@ python cli.py --input question.json --city Paris --top_k 5
 ```
 
 **响应示例：**
+
 ```json
 {
   "contexts": "...",
@@ -192,4 +195,3 @@ RERANK_TOP_K=20
 # API 端口
 RAG_API_PORT=8001
 ```
-
