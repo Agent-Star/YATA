@@ -129,6 +129,14 @@ def insert_documents(rows: Sequence[dict], embedding_dim: int = 1024) -> None:
         if timestamp:
             metadata["timestamp"] = str(timestamp)
         
+        author = row.get("author")
+        if author not in (None, ""):
+            metadata["author"] = str(author)
+
+        day = row.get("day")
+        if day not in (None, ""):
+            metadata["day"] = str(day)
+
         # 如果有额外的 meta 字段，尝试合并
         if row.get("meta"):
             meta_dict = row.get("meta")

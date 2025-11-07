@@ -109,6 +109,8 @@ def load_rows_from_file(path: Path) -> List[Dict[str, Any]]:
                 "content": text,
                 "embedding": embedding,
                 "timestamp": timestamp,  # 添加 timestamp 字段
+                "author": chunk.get("author") or payload.get("author"),
+                "day": chunk.get("day"),
                 "meta": {"urls": urls} if isinstance(urls, dict) else None,
             }
         )
