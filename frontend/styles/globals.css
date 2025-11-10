@@ -109,7 +109,8 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -355,6 +356,122 @@ body {
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
+}
+
+.overview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.overview-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.overview-panel__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.overview-panel__stat-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.overview-panel__stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.overview-panel__stat-unit {
+  font-size: 14px;
+  margin-left: 4px;
+  color: #6b7280;
+}
+
+.overview-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overview-panel__section-header {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.overview-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.overview-panel__mini-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 110px;
+  justify-content: center;
+}
+
+.overview-panel__mini-flag {
+  font-size: 28px;
+}
+
+.overview-panel__city-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.overview-panel__city-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #059669;
+}
+
+.overview-panel__city-info {
+  flex: 1;
+}
+
+.overview-panel__timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.overview-panel__timeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overview-panel__timeline-year {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f59e0b;
 }
 
 .chat-message__markdown code {

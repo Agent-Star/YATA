@@ -16,12 +16,4 @@ export const sidebarGroups = [
       { key: 'guides', labelKey: 'sidebar.guides', icon: 'IconMapPin' },
     ],
   },
-  {
-    key: 'settings',
-    titleKey: 'sidebar.settings',
-    items: [
-      { key: 'preferences', labelKey: 'sidebar.preferences', icon: 'IconSetting' },
-      { key: 'support', labelKey: 'sidebar.support', icon: 'IconHelpCircle' },
-    ],
-  },
 ];
