@@ -344,7 +344,7 @@ curl -X POST "http://localhost:8002/nlu/simple" \
 
 ### 处理流程
 
-```
+```txt
 用户输入
   ↓
 意图识别 (Adviser)
