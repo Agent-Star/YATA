@@ -7,8 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/1a_7TcFFgT2k5SIGlxdu2lOE1OaaTw_u4
 """
 
-#文件封装了“旅行规划智能体”所需的七个 Prompt 模板
-#模块总览:
+# 文件封装了“旅行规划智能体”所需的七个 Prompt 模板
+# 模块总览:
 #       1 Intent Parsing Prompt (/parse_intent)
 #       2 Date Normalization Prompt (/normalize_date)
 #       3 Clarify Prompt (/clarify)
@@ -20,6 +20,7 @@ Original file is located at
 # ----------------------------------------------------------
 # 1 Intent Parsing Prompt
 # ----------------------------------------------------------
+
 
 def prompt_parse_intent(user_input: str) -> str:
     """
@@ -73,9 +74,11 @@ def prompt_parse_intent(user_input: str) -> str:
 请只返回 JSON 格式输出。
     """
 
+
 # ----------------------------------------------------------
 # 2 Date Normalization Prompt
 # ----------------------------------------------------------
+
 
 def prompt_normalize_date(user_input: str, today: str = "2025-09-15") -> str:
     """
@@ -99,9 +102,11 @@ def prompt_normalize_date(user_input: str, today: str = "2025-09-15") -> str:
 请仅输出 JSON。
     """
 
+
 # ----------------------------------------------------------
 # 3 Clarify Prompt
 # ----------------------------------------------------------
+
 
 def prompt_clarify(missing_slots: list, known_info: dict = None) -> str:
     """
@@ -122,6 +127,7 @@ def prompt_clarify(missing_slots: list, known_info: dict = None) -> str:
 
 请只返回 JSON。
     """
+
 
 def prompt_clarify1(missing_slots: list, known_info: dict = None) -> str:
     """
@@ -152,6 +158,7 @@ def prompt_clarify1(missing_slots: list, known_info: dict = None) -> str:
 # 4 Query Rewrite Prompt
 # ----------------------------------------------------------
 
+
 def prompt_query_rewrite(user_input: str, slots: dict = None) -> str:
     """
     功能: 将模糊自然语言问题改写为结构化检索 Query，便于 RAG 调用。
@@ -175,9 +182,11 @@ def prompt_query_rewrite(user_input: str, slots: dict = None) -> str:
 请只输出 JSON。
     """
 
+
 # ----------------------------------------------------------
 # 5 Assemble Context Prompt
 # ----------------------------------------------------------
+
 
 def prompt_assemble_context(question: str, chunk_titles: list) -> str:
     """
@@ -200,9 +209,11 @@ def prompt_assemble_context(question: str, chunk_titles: list) -> str:
 请只返回 JSON。
     """
 
+
 # ----------------------------------------------------------
 # 6 Plan Actions Prompt
 # ----------------------------------------------------------
+
 
 def prompt_plan_actions(slots: dict) -> str:
     """
@@ -230,9 +241,11 @@ def prompt_plan_actions(slots: dict) -> str:
 请只输出 JSON。
     """
 
+
 # ----------------------------------------------------------
 # 7 Aggregate Prompt
 # ----------------------------------------------------------
+
 
 def prompt_aggregate(candidates: list, user_prefs: dict = None) -> str:
     """
