@@ -76,7 +76,7 @@ class Clarifier:
         lines.append("（可以一次性回复多个要点）")
         return "\n".join(lines)
 
-    def auto_correct_task_type(self, intent: Dict[str, Any], user_input: str) -> str:
+    def auto_correct_task_type(self, intent: Dict[str, Any], user_input: str):
         task_type = intent.get("task_type", "")
         if task_type in ("other", "", None):
             if any(
@@ -90,10 +90,9 @@ class Clarifier:
             elif any(k in user_input for k in ["问题", "问", "how", "what", "why"]):
                 task_type = "qa"
             intent["task_type"] = task_type
-        return task_type
 
     def clarify(self, user_input: str, intent: Dict[str, Any]) -> Dict[str, Any]:
-        task_type = self.auto_correct_task_type(intent, user_input)
+        self.auto_correct_task_type(intent, user_input)
         missing = self.check_missing_info(intent)
         if missing:
             followup = self.generate_followup(missing)

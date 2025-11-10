@@ -1,6 +1,7 @@
 # adviser_base.py
 import json
 import re
+from typing import Optional
 
 import torch
 from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
@@ -43,7 +44,10 @@ class AdviserBase:
                 temperature=temperature,
                 max_tokens=4000,
             )
-            return resp.choices[0].message.content.strip()
+            if content := resp.choices[0].message.content:
+                return content.strip()
+            else:
+                return None
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
         if torch.cuda.is_available():
@@ -51,21 +55,24 @@ class AdviserBase:
         outputs = self.hf_model.generate(**inputs, max_new_tokens=1500)
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    def ask_json(self, prompt: str, schema_hint: str = None, temperature=0.2):
+    def ask_json(self, prompt: str, schema_hint: Optional[str] = None, temperature=0.2):
         guard = (
             f"\nFollow this JSON schema strictly:\n{schema_hint}\n"
             if schema_hint
             else ""
         )
         text = self._chat("Return ONLY valid JSON.\n" + guard + prompt, temperature)
+        if not text:
+            return {"raw_text": None}
+
         try:
             return json.loads(text)
-        except:
+        except Exception:
             match = re.search(r"\{[\s\S]*\}", text)
             if match:
                 try:
                     return json.loads(match.group(0))
-                except:
+                except Exception:
                     pass
         return {"raw_text": text}
 

@@ -29,6 +29,8 @@ class Verifier:
         )
 
         text = response.choices[0].message.content
+        if not text:
+            return {"raw_text": None}
 
         # 自动解析 JSON 格式
         try:
