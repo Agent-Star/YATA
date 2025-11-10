@@ -21,12 +21,6 @@ function Topbar() {
         <span className="sr-only">{t('layout.appTitle')}</span>
       </div>
       <Space align="center" spacing={16}>
-        <Input
-          prefix={<IconSearch />}
-          placeholder={t('layout.searchPlaceholder')}
-          className="topbar__search"
-        />
-        <Button icon={<IconCalendar />} theme="borderless" />
         <Button icon={<IconBell />} theme="borderless" />
         <LanguageSwitcher />
         <Space align="center" spacing={8}>

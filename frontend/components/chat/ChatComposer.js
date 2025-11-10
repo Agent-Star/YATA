@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button, TextArea } from '@douyinfe/semi-ui';
 import { IconMicrophone, IconSearchStroked } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 
-function ChatComposer({ value, onChange, onSend, onVoiceInput, isLoading }) {
+function ChatComposer({
+  value,
+  onChange,
+  onSend,
+  onVoiceInput,
+  isLoading,
+  isListening,
+  isVoiceSupported,
+}) {
   const { t } = useTranslation();
   const [isFocused, setIsFocused] = useState(false);
 
@@ -18,6 +26,19 @@ function ChatComposer({ value, onChange, onSend, onVoiceInput, isLoading }) {
 
   const handleFocus = () => setIsFocused(true);
   const handleBlur = () => setIsFocused(false);
+  const voiceButtonClassName = useMemo(() => {
+    const classNames = ['chat-composer__voice-button'];
+
+    if (isListening) {
+      classNames.push('chat-composer__voice-button--active');
+    }
+
+    if (!isVoiceSupported) {
+      classNames.push('chat-composer__voice-button--disabled');
+    }
+
+    return classNames.join(' ');
+  }, [isListening, isVoiceSupported]);
 
   return (
     <div className="chat-composer">
@@ -47,8 +68,16 @@ function ChatComposer({ value, onChange, onSend, onVoiceInput, isLoading }) {
           icon={<IconMicrophone />}
           aria-label={t('chat.voiceInputButton')}
           onClick={onVoiceInput}
-          disabled={isLoading}
-          className="chat-composer__voice-button"
+          disabled={isLoading || !isVoiceSupported}
+          aria-pressed={isListening}
+          className={voiceButtonClassName}
+          title={
+            !isVoiceSupported
+              ? t('chat.voiceInputUnsupported')
+              : isListening
+                ? t('chat.voiceInputRecording')
+                : t('chat.voiceInputButton')
+          }
         />
       </div>
       <div className="chat-composer__actions">
@@ -72,6 +101,8 @@ ChatComposer.defaultProps = {
   onChange: () => {},
   onSend: () => {},
   onVoiceInput: () => {},
+  isListening: false,
+  isVoiceSupported: true,
 };
 
 export default ChatComposer;
