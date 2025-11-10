@@ -212,3 +212,16 @@ export async function fetchHistory() {
 
   return data;
 }
+
+export async function saveFavorite(messageId) {
+  return apiRequest('/planner/favorites', {
+    method: 'POST',
+    body: { messageId },
+  });
+}
+
+export async function deleteFavorite(messageId) {
+  return apiRequest(`/planner/favorites/${messageId}`, {
+    method: 'DELETE',
+  });
+}

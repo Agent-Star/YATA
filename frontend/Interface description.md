@@ -114,13 +114,14 @@
 
 #### 统一消息结构（前后端共享）
 
-| 字段      | 类型   | 说明                                  |
-| --------- | ------ | ------------------------------------- |
-| id        | string | 消息唯一 ID（由后端生成，前端回显）   |
-| role      | string | `user` 或 `assistant`                 |
-| content   | string | 展示在聊天窗口的文字（支持 Markdown） |
-| metadata  | object | 选填，自由扩展（如行程数组、提示等）  |
-| createdAt | string | 选填，ISO 时间戳，前端目前不强制使用  |
+| 字段         | 类型    | 说明                                           |
+| ------------ | ------- | ---------------------------------------------- |
+| id           | string  | 消息唯一 ID（由后端生成，前端回显）            |
+| role         | string  | `user` 或 `assistant`                          |
+| content      | string  | 展示在聊天窗口的文字（支持 Markdown）          |
+| metadata     | object  | 选填，自由扩展（如行程数组、提示等）           |
+| createdAt    | string  | 选填，ISO 时间戳，前端目前不强制使用           |
+| isFavorited* | boolean | 选填，表示该消息是否已被当前用户收藏（只读） |
 
 历史记录接口与实时生成接口均使用该结构。
 
@@ -139,16 +140,21 @@
       "id": "msg-1",
       "role": "user",
       "content": "计划一次 5 天的巴黎艺术之旅",
-      "createdAt": "2024-05-01T08:00:00Z"
+      "createdAt": "2024-05-01T08:00:00Z",
+      "isFavorited": false
     },
     {
       "id": "msg-2",
       "role": "assistant",
       "content": "为你准备了以下行程……",
-      "createdAt": "2024-05-01T08:00:02Z"
+      "createdAt": "2024-05-01T08:00:02Z",
+      "isFavorited": true,
+      "metadata": { "itinerary": [] }
     }
   ]
 }
+
+> 前端会遍历 `messages`，将 `isFavorited === true` 的记录填充到“行程收藏”列表，并在 UI 中渲染实心爱心。
 ```
 
 若该用户尚无历史，可返回空数组或省略 `messages` 字段；前端会自动展示欢迎提示。
@@ -217,6 +223,42 @@
 | 401  | UNAUTHENTICATED     | 用户未登录                          |
 | 503  | SERVICE_UNAVAILABLE | 智能服务不可用或超时                |
 | 500  | API_ERROR           | 其它服务器异常                      |
+
+---
+
+### 2.3 收藏（Saved Trips）接口
+
+聊天窗口的爱心按钮与“行程收藏”页面依赖以下接口：
+
+#### 2.3.1 POST `/planner/favorites`
+- **用途**：收藏指定消息（通常是助手回复，但也允许用户消息）。
+- **请求体**
+
+| 字段      | 类型   | 说明                                             | 必填 |
+| --------- | ------ | ------------------------------------------------ | ---- |
+| messageId | string | 被收藏消息的唯一 ID（与 `/planner/history` 一致） | 是   |
+
+**成功响应 200**
+
+```json
+{
+  "favorite": {
+    "id": "fav-100",
+    "messageId": "msg-2",
+    "role": "assistant",
+    "content": "为你准备了以下行程……",
+    "metadata": { "itinerary": [] },
+    "savedAt": "2024-05-01T08:05:00Z"
+  }
+}
+```
+
+> 建议后端根据 `messageId` 读取最新的消息内容 / metadata，确保收藏列表与历史记录保持一致。
+
+#### 2.3.2 DELETE `/planner/favorites/{messageId}`
+- **用途**：取消收藏某条消息。
+- **路径参数**：`messageId` 与收藏时一致。
+- **成功响应 204**：无响应体。重复删除同一条消息也应返回 204（幂等）。
 
 ---
 

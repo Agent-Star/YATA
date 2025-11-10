@@ -6,6 +6,7 @@ export const initialPlannerState = {
   sidebarGroups,
   quickActions,
   messages: [],
+  favorites: [],
   isLoading: false,
   hasInitializedHistory: false,
 };
@@ -55,6 +56,56 @@ export function plannerReducer(state, action) {
         ...state,
         hasInitializedHistory: true,
       };
+    case 'SET_FAVORITES': {
+      const favorites = Array.isArray(action.payload) ? action.payload : [];
+      const favoriteIds = new Set(favorites.map((item) => item.messageId));
+
+      return {
+        ...state,
+        favorites,
+        messages: state.messages.map((message) => {
+          const key = message.serverMessageId || message.id;
+          const shouldBeFavorited = favoriteIds.has(key);
+
+          if (!!message.isFavorited !== shouldBeFavorited) {
+            return { ...message, isFavorited: shouldBeFavorited };
+          }
+
+          return message;
+        }),
+      };
+    }
+    case 'TOGGLE_FAVORITE': {
+      const { messageId, favorite, isFavorited } = action.payload;
+      const exists = state.favorites.some((item) => item.messageId === messageId);
+      let updatedFavorites = state.favorites;
+
+      if (isFavorited) {
+        if (favorite) {
+          updatedFavorites = exists
+            ? state.favorites.map((item) =>
+                item.messageId === messageId ? favorite : item
+              )
+            : [...state.favorites, favorite];
+        }
+      } else if (exists) {
+        updatedFavorites = state.favorites.filter((item) => item.messageId !== messageId);
+      }
+
+      return {
+        ...state,
+        favorites: updatedFavorites,
+        messages: state.messages.map((message) => {
+          const key = message.serverMessageId || message.id;
+
+          if (key === messageId) {
+            return { ...message, isFavorited };
+          }
+
+          return message;
+        }),
+      };
+    }
     default:
       return state;
   }

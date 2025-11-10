@@ -1,5 +1,5 @@
-import { Avatar, Button, Input, Space, Typography } from '@douyinfe/semi-ui';
-import { IconBell, IconCalendar, IconSearch } from '@douyinfe/semi-icons';
+import { Avatar, Button, Space, Typography } from '@douyinfe/semi-ui';
+import { IconBell } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@components/common/LanguageSwitcher';
 import { useAuth } from '@lib/hooks/useAuth';
@@ -21,12 +21,6 @@ function Topbar() {
         <span className="sr-only">{t('layout.appTitle')}</span>
       </div>
       <Space align="center" spacing={16}>
-        <Input
-          prefix={<IconSearch />}
-          placeholder={t('layout.searchPlaceholder')}
-          className="topbar__search"
-        />
-        <Button icon={<IconCalendar />} theme="borderless" />
         <Button icon={<IconBell />} theme="borderless" />
         <LanguageSwitcher />
         <Space align="center" spacing={8}>

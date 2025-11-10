@@ -1,7 +1,13 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePlannerContext } from '@store/plannerContext';
-import { streamPlan, fetchHistory } from '@lib/services/aiPlanner';
+import { Toast } from '@douyinfe/semi-ui';
+import {
+  streamPlan,
+  fetchHistory,
+  saveFavorite,
+  deleteFavorite,
+} from '@lib/services/aiPlanner';
 
 export function usePlanner() {
   const { t, i18n } = useTranslation();
@@ -30,6 +36,8 @@ export function usePlanner() {
         content: trimmed,
         metadata: null,
         isStreaming: false,
+        isFavorited: false,
+        serverMessageId: null,
       };
 
       const conversationHistory = [...state.messages, userMessage].map((message) => ({
@@ -53,6 +61,8 @@ export function usePlanner() {
           content: '',
           metadata: null,
           isStreaming: true,
+          isFavorited: false,
+          serverMessageId: null,
         },
       });
 
@@ -241,8 +251,14 @@ export function usePlanner() {
             id: item.id,
             role: item.role,
             content: item.content,
+            contentKey: item.contentKey || null,
+            contentParams: item.contentParams || null,
             metadata: item.metadata || null,
             isStreaming: false,
+            isFavorited: Boolean(item.isFavorited),
+            serverMessageId: item.id,
+            createdAt: item.createdAt || null,
+            savedAt: item.savedAt || null,
           }))
         : null;
 
@@ -252,12 +268,27 @@ export function usePlanner() {
         content: t('chat.initialMessage'),
         metadata: null,
         isStreaming: false,
+        isFavorited: false,
+        serverMessageId: null,
       };
 
       const nextMessages =
         mappedMessages && mappedMessages.length > 0 ? mappedMessages : [fallbackMessage];
 
       dispatch({ type: 'SET_MESSAGES', payload: nextMessages });
+      const derivedFavorites = nextMessages
+        .filter((message) => message.isFavorited)
+        .map((message) => ({
+          id: `favorite-${message.serverMessageId || message.id}`,
+          messageId: message.serverMessageId || message.id,
+          role: message.role,
+          content: message.content,
+          contentKey: message.contentKey || null,
+          contentParams: message.contentParams || null,
+          metadata: message.metadata || null,
+          savedAt: message.savedAt || message.createdAt || Date.now(),
+        }));
+      dispatch({ type: 'SET_FAVORITES', payload: derivedFavorites });
     } catch (error) {
       dispatch({
         type: 'SET_MESSAGES',
@@ -268,14 +299,104 @@ export function usePlanner() {
             content: t('chat.initialMessage'),
             metadata: null,
             isStreaming: false,
+            isFavorited: false,
+            serverMessageId: null,
           },
         ],
       });
+      dispatch({ type: 'SET_FAVORITES', payload: [] });
     } finally {
       dispatch({ type: 'SET_HISTORY_INITIALIZED' });
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [dispatch, t]);
+
+  const toggleFavoriteMessage = useCallback(
+    async (message) => {
+      if (!message?.id) {
+        return;
+      }
+
+      const clientGenerated = /^((user|assistant)-)/.test(message.id);
+      const targetId = message.serverMessageId || (clientGenerated ? null : message.id);
+
+      if (!targetId) {
+        Toast.error(t('chat.favoriteToggleError'));
+        return;
+      }
+
+      const resolvedContent =
+        message.content ||
+        (message.contentKey ? t(message.contentKey, message.contentParams) : '');
+
+      try {
+        if (message.isFavorited) {
+          await deleteFavorite(targetId);
+          dispatch({
+            type: 'TOGGLE_FAVORITE',
+            payload: {
+              messageId: targetId,
+              favorite: null,
+              isFavorited: false,
+            },
+          });
+        } else {
+          const response = await saveFavorite(targetId);
+          const favoritePayload =
+            response?.favorite ||
+            response || {
+              id: `favorite-${targetId}`,
+              messageId: targetId,
+              role: message.role,
+              content: resolvedContent,
+              contentKey: message.contentKey || null,
+              contentParams: message.contentParams || null,
+              metadata: message.metadata || null,
+              savedAt: Date.now(),
+            };
+
+          dispatch({
+            type: 'TOGGLE_FAVORITE',
+            payload: {
+              messageId: targetId,
+              favorite: favoritePayload,
+              isFavorited: true,
+            },
+          });
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to toggle favorite', error);
+        Toast.error(t('chat.favoriteToggleError'));
+      }
+    },
+    [dispatch, t]
+  );
+
+  const removeFavorite = useCallback(
+    async (messageId) => {
+      if (!messageId) {
+        return;
+      }
+
+      try {
+        await deleteFavorite(messageId);
+        dispatch({
+          type: 'TOGGLE_FAVORITE',
+          payload: {
+            messageId,
+            favorite: null,
+            isFavorited: false,
+          },
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to remove favorite', error);
+        Toast.error(t('chat.favoriteToggleError'));
+      }
+    },
+    [dispatch, t]
+  );
 
   return {
     state,
@@ -284,5 +405,7 @@ export function usePlanner() {
     setActiveSection,
     loadHistory,
     hasInitializedHistory,
+    toggleFavoriteMessage,
+    removeFavorite,
   };
 }
