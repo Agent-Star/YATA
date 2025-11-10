@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 import re
-from NLU_module.source.model_definition import gpt35, GPT_MODEL_NAME
+
+from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
 
 
 class Verifier:
