@@ -1,14 +1,14 @@
 # adviser_main.py
 import time
-from typing import Dict, Any, List
+from typing import Any, Dict
 
-from .adviser_base import AdviserBase
-from .adviser_rag import call_rag_api
-from .adviser_intent import run_intent_parsing
-from .adviser_context import run_context_summary
-from .adviser_plan_actions import run_plan_actions
 from .adviser_aggregate import run_aggregate
+from .adviser_base import AdviserBase
+from .adviser_context import run_context_summary
+from .adviser_intent import run_intent_parsing
 from .adviser_itinerary import generate_itinerary
+from .adviser_plan_actions import run_plan_actions
+from .adviser_rag import call_rag_api
 from .adviser_recommendation import generate_recommendations
 from .clarifier import Clarifier
 
@@ -33,7 +33,7 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
         if k == "dest_pref":
             prev = out.get(k) or []
             seen, merged = set(), []
-            for item in (prev + v):
+            for item in prev + v:
                 s = str(item)
                 if s not in seen:
                     seen.add(s)
@@ -45,7 +45,7 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
         elif isinstance(v, list):
             prev = out.get(k) or []
             seen, merged = set(), []
-            for item in (prev + v):
+            for item in prev + v:
                 s = str(item)
                 if s not in seen:
                     seen.add(s)
@@ -63,10 +63,11 @@ class Adviser:
         self.memory: Dict[str, Any] = {}
         self.clarifier = Clarifier()
 
-
-    def generate_response(self, user_input, use_rag=True, rag_top_k=5, debug=False, skip_clarifier=False):
+    def generate_response(
+        self, user_input, use_rag=True, rag_top_k=5, debug=False, skip_clarifier=False
+    ):
         t0 = time.time()
-        #result = run_intent_parsing(self.llm, user_input, debug)
+        # result = run_intent_parsing(self.llm, user_input, debug)
 
         # 1) parse intent for current user input
         result = run_intent_parsing(self.llm, user_input, debug) or {}
@@ -81,7 +82,7 @@ class Adviser:
                 return {
                     "need_more_info": True,
                     "follow_up": clarify_result["follow_up"],
-                    "intent_parsed": clarify_result["revised_intent"]
+                    "intent_parsed": clarify_result["revised_intent"],
                 }
 
             # 信息完整，更新 memory
@@ -90,10 +91,9 @@ class Adviser:
         else:
             # 跳过 Clarifier，直接用上次记忆
             result["intent_parsed"] = self.memory
-                # Clarifier 前先合并旧意图（但不更新 memory
+            # Clarifier 前先合并旧意图（但不更新 memory
 
         task_type = result["intent_parsed"].get("task_type", "itinerary")
-
 
         # RAG
         if use_rag:
@@ -102,10 +102,21 @@ class Adviser:
             rewrite_alias = result.get("query_rewrite", {}).get("city_alias", [])
             city_alias = rewrite_alias[0] if rewrite_alias else ""
             city_map = {
-                "巴黎": "Paris", "伦敦": "London", "东京": "Tokyo", "大阪": "Osaka",
-                "香港": "Hong Kong", "台北": "Taipei", "曼谷": "Bangkok", "首尔": "Seoul",
-                "悉尼": "Sydney", "新加坡": "Singapore", "吉隆坡": "Kuala Lumpur",
-                "巴塞罗那": "Barcelona", "罗马": "Rome", "上海": "Shanghai", "北京": "Beijing"
+                "巴黎": "Paris",
+                "伦敦": "London",
+                "东京": "Tokyo",
+                "大阪": "Osaka",
+                "香港": "Hong Kong",
+                "台北": "Taipei",
+                "曼谷": "Bangkok",
+                "首尔": "Seoul",
+                "悉尼": "Sydney",
+                "新加坡": "Singapore",
+                "吉隆坡": "Kuala Lumpur",
+                "巴塞罗那": "Barcelona",
+                "罗马": "Rome",
+                "上海": "Shanghai",
+                "北京": "Beijing",
             }
             city = city_alias or city_map.get(city_raw, city_raw)
 
@@ -122,10 +133,14 @@ class Adviser:
             elif task_type == "qa":
                 query_text = user_input.strip()
             else:
-                query_text = " ".join(keywords).strip() or user_input.strip() or "travel guide"
+                query_text = (
+                    " ".join(keywords).strip() or user_input.strip() or "travel guide"
+                )
 
             if debug:
-                print(f"🧭 [RAG Query 构造] 类型={task_type}, Query={query_text}, 城市={city}")
+                print(
+                    f"🧭 [RAG Query 构造] 类型={task_type}, Query={query_text}, 城市={city}"
+                )
 
             rag_results = call_rag_api(query_text, city, rag_top_k, debug)
 
@@ -137,18 +152,25 @@ class Adviser:
         else:
             doc_summaries, rag_results = ["No external context."], []
 
-        result["context_summary"] = run_context_summary(self.llm, user_input, doc_summaries)
+        result["context_summary"] = run_context_summary(
+            self.llm, user_input, doc_summaries
+        )
         result["plan_steps"] = run_plan_actions(self.llm, result["intent_parsed"])
-        result["final_aggregation"] = run_aggregate(self.llm, [], result["intent_parsed"])
+        result["final_aggregation"] = run_aggregate(
+            self.llm, [], result["intent_parsed"]
+        )
 
         # itinerary only if itinerary task
         if task_type == "itinerary":
-            result["detailed_itinerary"] = generate_itinerary(self.llm, result, rag_results, debug)
+            result["detailed_itinerary"] = generate_itinerary(
+                self.llm, result, rag_results, debug
+            )
         elif task_type == "recommendation":
             subtype = result["intent_parsed"].get("subtype", "")
-            result["recommendations"] = generate_recommendations(self.llm, result, rag_results, debug=debug)
+            result["recommendations"] = generate_recommendations(
+                self.llm, result, rag_results, debug=debug
+            )
             result["final_output_type"] = f"recommendation_{subtype or 'general'}"
-
 
         result["latency_sec"] = round(time.time() - t0, 2)
         return result

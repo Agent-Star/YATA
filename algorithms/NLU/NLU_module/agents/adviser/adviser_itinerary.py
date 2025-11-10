@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 import json
 
+
 def generate_itinerary(adviser, result, rag_results, debug=False):
     # 从意图里抓一些上下文（城市、日期等）
     intent = result.get("intent_parsed", {}) if isinstance(result, dict) else {}

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Any
-
+from typing import Any, Dict, List
 
 MAX_SNIPPET_LENGTH = 500
 
@@ -36,11 +35,11 @@ def build_prompt(question: str, contexts: List[Dict[str, Any]]) -> str:
         # 格式化时间戳
         timestamp = None
         if created_at:
-            if hasattr(created_at, 'isoformat'):
+            if hasattr(created_at, "isoformat"):
                 timestamp = created_at.isoformat()
             else:
                 timestamp = str(created_at)
-        
+
         payload["contexts"].append(
             {
                 "id": index,
@@ -56,5 +55,3 @@ def build_prompt(question: str, contexts: List[Dict[str, Any]]) -> str:
         )
 
     return json.dumps(payload, ensure_ascii=False, indent=2)
-
-
