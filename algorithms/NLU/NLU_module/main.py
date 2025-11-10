@@ -5,7 +5,8 @@ import os
 # from NLU_module.agents.adviser import Adviser
 from NLU_module.agents.adviser.adviser_main import Adviser
 from NLU_module.agents.verifier import Verifier
-from NLU_module.source.model_definition import *
+
+# from NLU_module.source.model_definition import *
 
 
 class NLU:
@@ -46,6 +47,7 @@ class NLU:
                 debug=True if self.init else False,
                 skip_clarifier=False,
             )
+
         # 保存 Adviser 输出
         with open(self.log_path, "a+", encoding="utf-8") as f:
             f.write(
