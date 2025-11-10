@@ -5,11 +5,11 @@
 - 前端 - 刘俊琦
 - 数据搜集 + RAG - 张曦文， 黄禄凯
 - LLM + Evaluation - 黄兰婷， 郭萱
-- 后端 - 王文瀚
+- 后端 - 王文翰
 
 ## Structure
 
-```
+```txt
 YATA/
 │
 ├── algorithms/
@@ -23,7 +23,4 @@ YATA/
 
 ## Requirement
 
-
-
 ## Quick Start
-
