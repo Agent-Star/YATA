@@ -4,7 +4,6 @@ const resources = {
       layout: {
         appTitle: 'AI 旅行规划',
         searchPlaceholder: '搜索目的地、主题或旅行人群',
-        newBoard: '新建栏目',
         personalWorkspace: '个人空间',
         workspaceName: 'YATA Travel',
       },
@@ -159,7 +158,6 @@ const resources = {
       layout: {
         appTitle: 'AI Travel Planner',
         searchPlaceholder: 'Search destinations, themes or travel groups',
-        newBoard: 'New board',
         personalWorkspace: 'Personal Workspace',
         workspaceName: 'YATA Travel',
       },
