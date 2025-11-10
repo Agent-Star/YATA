@@ -17,6 +17,7 @@ function ChatPanel() {
     sendMessage,
     triggerQuickAction,
     loadHistory,
+    toggleFavoriteMessage,
   } = usePlanner();
   const { i18n, t } = useTranslation();
 
@@ -145,7 +146,11 @@ function ChatPanel() {
     <div className="chat-panel">
       <ChatHeader />
       <QuickActionList actions={quickActions} onSelect={handleQuickAction} />
-      <ChatHistory messages={messages} isLoading={isLoading} />
+      <ChatHistory
+        messages={messages}
+        isLoading={isLoading}
+        onToggleFavorite={toggleFavoriteMessage}
+      />
       <ChatComposer
         value={draft}
         onChange={setDraft}

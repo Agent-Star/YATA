@@ -5,6 +5,7 @@ import Sidebar from '@components/layout/Sidebar';
 import Topbar from '@components/layout/Topbar';
 import EmptyState from '@components/common/EmptyState';
 import ChatPanel from '@modules/chat/ChatPanel';
+import SavedTripsPanel from '@modules/saved/SavedTripsPanel';
 import { usePlanner } from '@lib/hooks/usePlanner';
 import AuthPrompt from '@components/auth/AuthPrompt';
 import { useAuth } from '@lib/hooks/useAuth';
@@ -27,6 +28,8 @@ function HomePage() {
     switch (activeSection) {
       case 'ai-planner':
         return <ChatPanel />;
+      case 'saved-trips':
+        return <SavedTripsPanel />;
       case 'dashboard':
         return (
           <EmptyState

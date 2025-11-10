@@ -1,5 +1,5 @@
-import { Avatar, Button, Input, Space, Typography } from '@douyinfe/semi-ui';
-import { IconBell, IconCalendar, IconSearch } from '@douyinfe/semi-icons';
+import { Avatar, Button, Space, Typography } from '@douyinfe/semi-ui';
+import { IconBell } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@components/common/LanguageSwitcher';
 import { useAuth } from '@lib/hooks/useAuth';

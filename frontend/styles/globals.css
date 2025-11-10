@@ -209,6 +209,58 @@ body {
   width: 100%;
 }
 
+.chat-message__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.chat-message--user .chat-message__inner {
+  align-items: flex-end;
+}
+
+.chat-message--assistant .chat-message__inner {
+  align-items: flex-start;
+}
+
+.chat-message__actions {
+  display: flex;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.chat-message--user .chat-message__actions {
+  justify-content: flex-end;
+}
+
+.chat-message--assistant .chat-message__actions {
+  justify-content: flex-start;
+}
+
+.chat-message:hover .chat-message__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-message__favorite {
+  color: #9ca3af;
+  border-radius: 999px;
+}
+
+.chat-message__favorite.is-active {
+  color: #ef4444;
+}
+
+@media (hover: none) {
+  .chat-message__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 .chat-message--user {
   justify-content: flex-end;
 }
@@ -256,6 +308,53 @@ body {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.saved-trips {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.saved-trips__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saved-trips__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.saved-trip-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.saved-trip-card__content {
+  min-height: 80px;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.saved-trip-card__content p {
+  margin: 0 0 8px;
+}
+
+.saved-trip-card__content p:last-child {
+  margin-bottom: 0;
+}
+
+.saved-trip-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .chat-message__markdown code {
