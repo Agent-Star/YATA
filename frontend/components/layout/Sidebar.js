@@ -42,9 +42,6 @@ function Sidebar({ groups, activeKey, onSelect }) {
           </Typography.Title>
         </div>
       </div>
-      <div className="sidebar__actions">
-        <Button theme="light" block icon={<IconApps />}>{t('layout.newBoard')}</Button>
-      </div>
       <div className="sidebar__nav">
         {groups.map((group) => (
           <div className="sidebar__section" key={group.key}>

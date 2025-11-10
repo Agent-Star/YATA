@@ -474,6 +474,99 @@ body {
   color: #f59e0b;
 }
 
+.inspiration-panel,
+.guides-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.inspiration-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 8px;
+}
+
+.inspiration-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid #f3f4f6;
+  border-radius: 16px;
+  padding: 28px 24px;
+}
+
+.inspiration-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.inspiration-card--orange .inspiration-card__icon {
+  background: rgba(251, 191, 36, 0.18);
+  color: #f59e0b;
+}
+
+.inspiration-card--green .inspiration-card__icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.inspiration-card--purple .inspiration-card__icon {
+  background: rgba(139, 92, 246, 0.16);
+  color: #7c3aed;
+}
+
+.inspiration-card__tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.guides-panel__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.guide-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.guide-card__bookmark {
+  color: #d97706;
+}
+
+.guide-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.guide-card__tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .chat-message__markdown code {
   background-color: var(--semi-color-fill-1);
   border-radius: 4px;
