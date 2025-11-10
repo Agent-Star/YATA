@@ -1,6 +1,6 @@
 # YATA 前端项目
 
-这是 YATA (Yet Another Travel Agent) 项目的前端部分，基于 Next.js 构建，提供 AI 旅行规划聊天体验与账户登录流程。
+这是 YATA (Yet Another Travel Agent) 项目的前端部分，基于 Next.js 构建，提供 AI 旅行规划聊天体验、收藏管理、旅行统计以及灵感/指南等多场景页面。
 
 ## 技术栈   
 
@@ -8,7 +8,7 @@
 - **Semi UI**: 字节跳动开源的企业级设计系统和 React 组件库
 - **React & Context API**: 构建组件与应用状态管理
 - **react-markdown**: 渲染 AI 返回的 Markdown 回复
-- **OpenAI API**: 提供多轮对话能力，支持上下文保持的旅行规划
+- **自研 AI Planner API**：通过 `/planner/*` 接口实现流式旅行规划（SSE），支持上下文保持
 
 ## 项目结构
 
@@ -17,47 +17,40 @@ frontend/
 ├── components/       # 可复用组件
 │   ├── auth/         # 认证相关组件
 │   ├── chat/         # 聊天相关组件
-│   ├── common/       # 通用组件
-│   ├── dashboard/    # 仪表盘组件
-│   └── layout/       # 布局组件
+│   ├── common/       # 通用组件（Topbar、LanguageSwitcher 等）
+│   └── layout/       # 布局
 ├── data/             # 静态数据
 ├── lib/              # 工具函数、服务、自定义 Hooks
 │   ├── hooks/        # 自定义 React Hooks
 │   ├── i18n/         # 国际化配置
 │   └── services/     # API 服务
-├── modules/          # 功能模块
-├── pages/            # 页面组件
-│   ├── api/          # API 路由
-│   └── planner/      # 旅行规划页面
-├── store/            # 状态管理
-│   ├── chatContext.js # 聊天上下文管理
-│   └── plannerContext.js # 规划器状态管理
+├── modules/          # 功能模块 (chat / dashboard / saved / inspiration / guides)
+├── pages/            # Next.js 页面
+│   └── api/          # 服务端接口 (planner/plan/stream 等)
+├── store/            # 状态管理 (plannerContext)
 └── styles/           # 全局样式
 ```
 
 ## 核心功能
 
-- **AI 旅行助手**：通过 OpenAI API 提供智能旅行规划，支持多轮对话和上下文保持。
-- **Markdown 渲染**：使用 react-markdown 渲染 AI 返回的格式化回复，提升阅读体验。
-- **快速问题模板**：预定义旅行场景快速触发对话，如周末城市游、家庭旅行等。
-- **账户登录与注册**：未登录时显示提示面板，登录后展示聊天，并在顶部显示昵称与登出按钮。
-- **多语言界面**：支持中文与英文切换，提供本地化的用户体验。
-- **流式响应**：支持 AI 回复的流式显示，提升用户体验。
+- **AI 旅行助手**：通过 `planner/plan/stream` SSE 接口获取实时回复，完整保留历史上下文。
+- **快捷提问与语音输入**：支持 Quick Actions、浏览器 Web Speech API 语音转文字，并可手动开启/停止录音。
+- **收藏与 Saved Trips**：聊天消息支持收藏（带收藏按钮反馈），Saved Trips 页面可查看/取消收藏。
+- **旅行统计 / 灵感 / 指南**：仪表盘展示旅行统计，Travel Inspiration & City Guides 提供静态灵感卡片（可跳转到 AI 规划）。
+- **滚动体验**：聊天记录支持自动跟随／手动锁定、顶部/底部快捷按钮。
+- **多语言**：全局使用 i18next，可在顶栏切换中英文。
 
 ## 开始使用
 
 ### 环境变量
 
-在项目根目录创建 `.env.local`（用于本地开发），填入 OpenAI API 凭据：
+前端默认通过 `NEXT_PUBLIC_API_BASE_URL` 调用后端。可在 `frontend/.env.*` 中配置，例如：
 
 ```
-OPENAI_API_KEY=your_api_key_here
-# 可选：覆盖默认配置
-OPENAI_API_URL=https://api.openai.com/v1/chat/completions
-OPENAI_API_MODEL=gpt-3.5-turbo
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
 ```
 
-设置后需重启开发服务器以生效。
+若不配置则使用同域接口（Next.js API Routes）。
 
 ### 安装依赖
 
@@ -71,7 +64,7 @@ npm install
 npm run dev
 ```
 
-应用将在 [http://localhost:3000](http://localhost:3000) 启动。首次进入需要注册或登录一个账号才可使用聊天功能（账户信息仅保存在当前会话中）。
+应用将在 [http://localhost:3000](http://localhost:3000) 启动。首次进入需注册或登录（数据通过 `/auth/*` 接口返回）。
 
 ### 构建生产版本
 
@@ -87,16 +80,16 @@ npm start
 
 ## 开发提示
 
-- 账户数据与会话状态目前仅存于内存，刷新页面后会重置，可按需扩展到后端或 `localStorage`。
-- OpenAI API 集成位于 `lib/services/openaiService.js`，可根据需要调整请求模型、系统提示或错误处理。
-- 聊天上下文管理位于 `store/chatContext.js`，负责维护多轮对话的消息历史。
-- 旅行规划逻辑封装在 `lib/hooks/useTravelPlanner.js` 中，提供了生成和修改旅行计划的功能。
-- 运行 `npm run lint` 时 Next.js 会提示初始化 ESLint，请按需完成设置。
+- 所有接口封装在 `lib/services/apiClient.js` 与 `lib/services/aiPlanner.js` 中，可根据后端实际地址调整。
+- 业务状态集中在 `store/plannerContext` + `lib/hooks/usePlanner`，任何新页面若需要规划器数据可直接调用 `usePlanner()`。
+- 收藏操作会实时请求 `/planner/favorites`，如需真实数据请确保后端实现对应接口。
+- 旅行统计/灵感/指南目前为静态数据，后续可对接真实分析结果。
+- 语音输入依赖浏览器 `SpeechRecognition` API，非 Chrome 浏览器可能不支持。
 
 ## 最近更新
 
-- 集成 OpenAI API 实现多轮对话功能
-- 添加旅行规划上下文管理
-- 优化聊天界面，支持 Markdown 渲染
-- 实现流式响应，提升用户体验
-- 添加多语言支持
+- 引入旅行统计（Dashboard）、旅行灵感与城市指南模块。
+- 新增收藏功能 + Saved Trips 页面，支持与后端收藏接口同步。
+- 集成浏览器语音转文字，提供录音状态与权限提示。
+- 优化聊天历史自动滚动、顶部/底部定位按钮、收藏状态与提示文案。
+- 清理未使用的 i18n 文案，并扩充 dashboard/inspiration/guides 相关翻译。
