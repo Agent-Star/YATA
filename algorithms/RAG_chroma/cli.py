@@ -4,16 +4,23 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from config import settings
 from db import init_db
-from search import search
 from embedder import get_embedding_dimension
 from rag import build_prompt
+from search import search
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RAG CLI: read question JSON, output prompt")
-    parser.add_argument("--input", "-i", type=str, default=None, help="Path to input JSON (default: question.json in current directory)")
+    parser = argparse.ArgumentParser(
+        description="RAG CLI: read question JSON, output prompt"
+    )
+    parser.add_argument(
+        "--input",
+        "-i",
+        type=str,
+        default=None,
+        help="Path to input JSON (default: question.json in current directory)",
+    )
     parser.add_argument("--city", type=str, default=None, help="Optional city filter")
     parser.add_argument("--top_k", type=int, default=None, help="Override top_k")
     args = parser.parse_args()

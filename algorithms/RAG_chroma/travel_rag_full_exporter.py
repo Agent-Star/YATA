@@ -10,13 +10,13 @@
 📌 特点：使用 BGE-M3 模型（1024维）、支持中英双语、带 Infobox 清洗
 """
 
+import json
 import os
 import re
-import json
-import requests
 from datetime import datetime, timedelta
-from sentence_transformers import SentenceTransformer
 
+import requests
+from sentence_transformers import SentenceTransformer
 
 # ===================== 配置 =====================
 # 输出目录：当前项目的 data 目录
@@ -35,37 +35,43 @@ model = SentenceTransformer(MODEL_NAME)
 
 # ===================== 工具函数 =====================
 def clean_text(text):
-    if not text: return ""
-    return re.sub(r'\s+', ' ', text).strip()
+    if not text:
+        return ""
+    return re.sub(r"\s+", " ", text).strip()
+
 
 def split_text(text, min_len=200, max_len=500):
     cleaned = clean_text(text)
-    if not cleaned: return []
-    sentences = re.split(r'[。？！.?!\n]', cleaned)
+    if not cleaned:
+        return []
+    sentences = re.split(r"[。？！.?!\n]", cleaned)
     chunks, current, length = [], [], 0
     for sent in sentences:
         sent = sent.strip()
-        if not sent: continue
+        if not sent:
+            continue
         l = len(sent)
         if length + l > max_len:
             if current:
-                chunks.append(''.join(current))
+                chunks.append("".join(current))
                 current, length = [sent], l
             else:
                 chunks.append(sent)
         elif length + l >= min_len:
             current.append(sent)
-            chunks.append(''.join(current))
+            chunks.append("".join(current))
             current, length = [], 0
         else:
             current.append(sent)
             length += l
     if current:
-        chunks.append(''.join(current))
+        chunks.append("".join(current))
     return [c for c in chunks if len(c) >= 100]
 
+
 def vectorize_chunks(chunks):
-    if not chunks: return []
+    if not chunks:
+        return []
     embeddings = model.encode(chunks, normalize_embeddings=True)
     return list(zip(chunks, embeddings.tolist()))
 
@@ -79,10 +85,10 @@ def get_osm_data(city_name, country_code):
         "limit": 1,
         "countrycodes": country_code,
         "class": "boundary",
-        "type": "administrative"
+        "type": "administrative",
     }
     headers = {"User-Agent": USER_AGENT}
-    
+
     try:
         response = requests.get(url, params=params, headers=headers, timeout=10)
         response.raise_for_status()
@@ -94,7 +100,7 @@ def get_osm_data(city_name, country_code):
         return {
             "lat": float(item["lat"]),
             "lon": float(item["lon"]),
-            "country": item["display_name"].split(",")[-1].strip()
+            "country": item["display_name"].split(",")[-1].strip(),
         }
     except Exception as e:
         print(f"❌ OSM失败：{e}")
@@ -110,7 +116,7 @@ def clean_infobox(raw_infobox):
         return {}
 
     cleaned = {}
-    
+
     # 温度映射（兼容大小写和符号变体）
     temp_map = {
         "Jan_Hi_°C": "jan_high_temp",
@@ -126,13 +132,13 @@ def clean_infobox(raw_infobox):
         "Nov_Hi_°C": "nov_high_temp",
         "Dec_Hi_°C": "dec_high_temp",
         "Jan_Lo_°C": "jan_low_temp",
-        "Year_Precip_mm": "annual_precipitation_mm"
+        "Year_Precip_mm": "annual_precipitation_mm",
     }
 
     for key, clean_key in temp_map.items():
         if key in raw_infobox:
             try:
-                val = raw_infobox[key].strip().replace('°C', '').replace(',', '')
+                val = raw_infobox[key].strip().replace("°C", "").replace(",", "")
                 cleaned[clean_key] = round(float(val), 1)
             except:
                 pass
@@ -143,12 +149,16 @@ def clean_infobox(raw_infobox):
         "official_name": "official_name",
         "country": "country",
         "area_total_km2": "area_sqkm",
-        "population_as_of": "population_year"
+        "population_as_of": "population_year",
     }
     for key, desc in text_fields.items():
         if key in raw_infobox:
-            val = re.sub(r'\[\[.*?\]\]', lambda m: m.group(0).split('|')[-1].strip(']]'), raw_infobox[key])
-            val = re.sub(r'<.*?>', '', val).strip()
+            val = re.sub(
+                r"\[\[.*?\]\]",
+                lambda m: m.group(0).split("|")[-1].strip("]]"),
+                raw_infobox[key],
+            )
+            val = re.sub(r"<.*?>", "", val).strip()
             if val:
                 cleaned[desc] = val
 
@@ -175,11 +185,7 @@ def get_wikipedia_data(city_name, country_code):
         wiki_url = f"https://{lang}.wikipedia.org/w/api.php"
         headers = {"User-Agent": USER_AGENT}
 
-        direct_titles = [
-            city_name,
-            f"{city_name} (city)",
-            f"{city_name} City"
-        ]
+        direct_titles = [city_name, f"{city_name} (city)", f"{city_name} City"]
 
         for title in direct_titles:
             try:
@@ -190,9 +196,11 @@ def get_wikipedia_data(city_name, country_code):
                     "explaintext": True,
                     "rvprop": "content",
                     "rvslots": "main",
-                    "format": "json"
+                    "format": "json",
                 }
-                res = requests.get(wiki_url, params=content_params, headers=headers, timeout=10)
+                res = requests.get(
+                    wiki_url, params=content_params, headers=headers, timeout=10
+                )
                 res.raise_for_status()
                 data = res.json()
                 page = list(data["query"]["pages"].values())[0]
@@ -214,11 +222,13 @@ def get_wikipedia_data(city_name, country_code):
                     continue
 
                 import mwparserfromhell
+
                 wikicode = mwparserfromhell.parse(wikitext)
                 templates = wikicode.filter_templates()
                 infobox_candidates = [
-                    t for t in templates
-                    if 'infobox' in str(t.name).lower() or '信息框' in str(t.name)
+                    t
+                    for t in templates
+                    if "infobox" in str(t.name).lower() or "信息框" in str(t.name)
                 ]
 
                 raw_infobox = {}
@@ -227,7 +237,7 @@ def get_wikipedia_data(city_name, country_code):
                     for param in chosen.params:
                         key = str(param.name).strip()
                         value = str(param.value).strip()
-                        value = re.sub(r'\[\[(?:[^|\]]*\|)?([^]]+)\]\]', r'\1', value)
+                        value = re.sub(r"\[\[(?:[^|\]]*\|)?([^]]+)\]\]", r"\1", value)
                         if key and value:
                             raw_infobox[key] = value
 
@@ -270,7 +280,7 @@ def get_weather_data(lat, lon):
             "avg_temp_c": round(avg_temp, 1),
             "max_temp_c": round(day_data.get("maxtemp_c", 0), 1),
             "min_temp_c": round(day_data.get("mintemp_c", 0), 1),
-            "condition": day_data.get("condition", {}).get("text", "Unknown")
+            "condition": day_data.get("condition", {}).get("text", "Unknown"),
         }
     except Exception as e:
         print(f"❌ 天气数据获取失败：{str(e)}")
@@ -278,14 +288,16 @@ def get_weather_data(lat, lon):
 
 
 # ===================== 4. 主流程：导出 =====================
-def export_city_data(city_name, country_code):  
-    print(f"\n{'='*60}\n🌍 正在处理：{city_name} ({country_code})")
+def export_city_data(city_name, country_code):
+    print(f"\n{'=' * 60}\n🌍 正在处理：{city_name} ({country_code})")
 
     osm_data = get_osm_data(city_name, country_code)
     if not osm_data:
         return False
 
-    wiki_content, infobox_cleaned, lang, wiki_title, wiki_url = get_wikipedia_data(city_name, country_code)
+    wiki_content, infobox_cleaned, lang, wiki_title, wiki_url = get_wikipedia_data(
+        city_name, country_code
+    )
     if not wiki_content:
         return False
 
@@ -304,26 +316,28 @@ def export_city_data(city_name, country_code):
         "timestamp": datetime.now().isoformat(),
         "urls": {
             "wikipedia": wiki_url,
-            "weatherapi_query": f"http://api.weatherapi.com/v1/history.json?q={osm_data['lat']},{osm_data['lon']}&dt={weather_data['date']}" if weather_data else None,
-            "osm_location": f"https://www.openstreetmap.org/search?query={city_name}%20{country_code}"
+            "weatherapi_query": f"http://api.weatherapi.com/v1/history.json?q={osm_data['lat']},{osm_data['lon']}&dt={weather_data['date']}"
+            if weather_data
+            else None,
+            "osm_location": f"https://www.openstreetmap.org/search?query={city_name}%20{country_code}",
         },
         "location": {
             "latitude": osm_data["lat"],
             "longitude": osm_data["lon"],
-            "country": osm_data["country"]
+            "country": osm_data["country"],
         },
         "knowledge": {
             "infobox": infobox_cleaned,
             "text_chunks": [
                 {"text": text, "embedding": vec} for text, vec in chunks_with_vectors
-            ]
+            ],
         },
-        "weather": weather_data
+        "weather": weather_data,
     }
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         print(f"📁 ✅ 数据已导出：{filename}")
         return True
@@ -345,14 +359,14 @@ if __name__ == "__main__":
         ("Paris", "fr"),
         ("Athens", "gr"),
         ("Kyoto", "jp"),
-        ("Beijing", "cn")
+        ("Beijing", "cn"),
     ]
 
     success_count = 0
-    for name, code in cities:  
+    for name, code in cities:
         if export_city_data(name, code):
             success_count += 1
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"🎉 数据导出完成！成功 {success_count}/{len(cities)} 个城市")
     print(f"📂 所有文件已保存至：{OUTPUT_DIR}")

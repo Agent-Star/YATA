@@ -9,7 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-
 # ===================== 可配置参数 =====================
 DATA_DIR = Path(__file__).parent / "data" / "paris"
 # 输出将逐文件写到 data 根目录，与 TXT 同名（仅扩展名改为 .json）
@@ -185,5 +184,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

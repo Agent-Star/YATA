@@ -1,12 +1,12 @@
 """
 数据导入脚本：将 data/*.json 文件中的数据导入到 Chroma 数据库
 """
+
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from config import settings
-from db import init_db, insert_documents, delete_by_source
+from db import delete_by_source, init_db, insert_documents
 from embedder import embed_texts, get_embedding_dimension
 
 
@@ -65,7 +65,7 @@ def load_rows_from_file(path: Path) -> List[Dict[str, Any]]:
     # 构建数据库行，同时检查 embedding 维度
     expected_dim = None  # 期望的维度（从第一个 embedding 推断）
     skipped_count = 0
-    
+
     for idx, chunk in enumerate(chunks):
         if not isinstance(chunk, dict):
             continue
@@ -79,13 +79,13 @@ def load_rows_from_file(path: Path) -> List[Dict[str, Any]]:
             embedding = computed_map.get(idx)
         if embedding is None:
             continue
-        
+
         # 检查 embedding 维度
         if not isinstance(embedding, list):
             embedding = list(embedding)
-        
+
         emb_dim = len(embedding)
-        
+
         # 如果这是第一个 embedding，设置期望维度
         if expected_dim is None:
             expected_dim = emb_dim
@@ -97,7 +97,7 @@ def load_rows_from_file(path: Path) -> List[Dict[str, Any]]:
         # 优先使用 JSON 根级别的 urls.wikipedia，否则使用 chunk 中的 URL
         chunk_url = chunk.get("url") or chunk.get("source_url")
         final_url = default_url if default_url else chunk_url
-        
+
         rows.append(
             {
                 "city": city,
@@ -114,10 +114,12 @@ def load_rows_from_file(path: Path) -> List[Dict[str, Any]]:
                 "meta": {"urls": urls} if isinstance(urls, dict) else None,
             }
         )
-    
+
     # 如果跳过了一些数据，给出提示
     if skipped_count > 0:
-        print(f"  跳过 {skipped_count} 条维度不匹配的记录（期望维度: {expected_dim if expected_dim else '未知'}）")
+        print(
+            f"  跳过 {skipped_count} 条维度不匹配的记录（期望维度: {expected_dim if expected_dim else '未知'}）"
+        )
 
     return rows
 
@@ -150,18 +152,25 @@ def main() -> None:
         try:
             rows = load_rows_from_file(path)
             if not rows:
-                print(f"  跳过：文件中没有有效数据")
+                print("  跳过：文件中没有有效数据")
                 skipped_files.append((path.name, "文件中没有有效数据"))
                 continue
-            
+
             # 检查第一条数据的维度，如果与期望维度不匹配，跳过整个文件
             if rows:
                 first_embedding = rows[0].get("embedding")
                 if first_embedding and isinstance(first_embedding, list):
                     file_emb_dim = len(first_embedding)
                     if file_emb_dim != emb_dim:
-                        print(f"  跳过：文件 embedding 维度为 {file_emb_dim}，期望维度为 {emb_dim}")
-                        skipped_files.append((path.name, f"维度不匹配 ({file_emb_dim}维，期望{emb_dim}维)"))
+                        print(
+                            f"  跳过：文件 embedding 维度为 {file_emb_dim}，期望维度为 {emb_dim}"
+                        )
+                        skipped_files.append(
+                            (
+                                path.name,
+                                f"维度不匹配 ({file_emb_dim}维，期望{emb_dim}维)",
+                            )
+                        )
                         continue
 
             # 删除该文件的旧数据（如果存在）
@@ -174,23 +183,23 @@ def main() -> None:
             print(f"  ✗ 错误：{e}")
             skipped_files.append((path.name, f"导入错误: {str(e)}"))
             import traceback
+
             traceback.print_exc()
             continue
 
     # 输出导入结果统计
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"导入完成！总共导入 {total_rows} 条记录")
     print(f"成功导入文件数: {len(json_files) - len(skipped_files)}")
-    
+
     if skipped_files:
         print(f"\n跳过的文件 ({len(skipped_files)} 个):")
         for filename, reason in skipped_files:
             print(f"  - {filename} ({reason})")
     else:
         print("\n所有文件都已成功导入！")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":
     main()
-
