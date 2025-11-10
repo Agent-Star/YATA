@@ -223,17 +223,11 @@ def vector_search(
 
     if not results["ids"] or not results["ids"][0]:
         return []
-    if not results["documents"] or not results["documents"][0]:
-        return []
-    if not results["metadatas"] or not results["metadatas"][0]:
-        return []
-    if not results["distances"] or not results["distances"][0]:
-        return []
 
     ids = results["ids"][0]
-    docs = results["documents"][0]
-    metas = results["metadatas"][0]
-    distances = results["distances"][0]
+    docs = results["documents"][0] if results["documents"] else []
+    metas = results["metadatas"][0] if results["metadatas"] else []
+    distances = results["distances"][0] if results["distances"] else []
 
     for i, doc_id in enumerate(ids):
         # Chroma 使用距离（越小越相似），需要转换为相似度分数
