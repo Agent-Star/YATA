@@ -6,6 +6,9 @@ import Topbar from '@components/layout/Topbar';
 import EmptyState from '@components/common/EmptyState';
 import ChatPanel from '@modules/chat/ChatPanel';
 import SavedTripsPanel from '@modules/saved/SavedTripsPanel';
+import OverviewPanel from '@modules/dashboard/OverviewPanel';
+import TravelInspirationPanel from '@modules/inspiration/TravelInspirationPanel';
+import CityGuidePanel from '@modules/guides/CityGuidePanel';
 import { usePlanner } from '@lib/hooks/usePlanner';
 import AuthPrompt from '@components/auth/AuthPrompt';
 import { useAuth } from '@lib/hooks/useAuth';
@@ -31,12 +34,17 @@ function HomePage() {
       case 'saved-trips':
         return <SavedTripsPanel />;
       case 'dashboard':
+        return <OverviewPanel />;
+      case 'inspiration':
         return (
-          <EmptyState
-            title={t('emptyState.dashboardTitle')}
-            description={t('emptyState.dashboardDescription')}
-            actionText={t('emptyState.dashboardAction')}
-            onAction={() => setActiveSection('ai-planner')}
+          <TravelInspirationPanel
+            onTryPrompt={() => setActiveSection('ai-planner')}
+          />
+        );
+      case 'guides':
+        return (
+          <CityGuidePanel
+            onPlanCity={() => setActiveSection('ai-planner')}
           />
         );
       default:

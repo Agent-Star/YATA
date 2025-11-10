@@ -4,7 +4,6 @@ const resources = {
       layout: {
         appTitle: 'AI 旅行规划',
         searchPlaceholder: '搜索目的地、主题或旅行人群',
-        newBoard: '新建栏目',
         personalWorkspace: '个人空间',
         workspaceName: 'YATA Travel',
       },
@@ -96,11 +95,61 @@ const resources = {
       },
       emptyState: {
         dashboardTitle: '旅行数据总览即将到来',
-        dashboardDescription: '在这里你可以查看旅行灵感、收藏和出行安排。',
-        dashboardAction: '返回AI规划',
+      dashboardDescription: '在这里你可以查看旅行灵感、收藏和出行安排。',
+      dashboardAction: '返回AI规划',
         buildingTitle: '功能建设中',
         buildingDescription: '我们正在为这个栏目构建体验，先尝试使用AI旅行规划吧。',
         buildingAction: '打开AI旅行助手',
+      },
+      inspiration: {
+        title: '旅行灵感',
+        subtitle: '从精选主题出发，快速开启新的旅行灵感',
+        sunnyCoast: {
+          title: '阳光海岸三日游',
+          description: '在马略卡岛的沙滩放松，搭配帆船和日落晚餐体验。',
+        },
+        mountainRetreat: {
+          title: '高山慢活疗愈',
+          description: '入住瑞士小镇木屋，体验森林徒步与温泉理疗。',
+        },
+        cityWeekend: {
+          title: '艺术城市周末',
+          description: '探索巴塞罗那的建筑、博物馆与在地餐厅。',
+        },
+        tryPrompt: '发送到 AI 规划',
+      },
+      guides: {
+        title: '城市指南',
+        subtitle: '依据聊天历史推荐的热门城市攻略',
+        kyoto: {
+          summary: '融合千年古都与现代生活的惬意旅程。',
+          highlights: '推荐伏见稻荷大社、祇园花见小路与抹茶体验。'
+        },
+        lisbon: {
+          summary: '在阳光海岸漫步，感受瓷砖艺术与复古电车。',
+          highlights: '不可错过贝伦塔、LX Factory 与葡式蛋挞。'
+        },
+        seattle: {
+          summary: '咖啡文化与户外体验兼备的港口城市。',
+          highlights: '建议登上太空针塔、逛派克市场并前往雷尼尔山。'
+        },
+        planAction: '生成专属行程',
+      },
+      dashboard: {
+        title: '旅行统计',
+        subtitle: '根据历史对话自动生成的旅程洞察',
+        updatedAt: '最近更新：{{date}}',
+        totalTrips: '累计生成的行程',
+        countriesExplored: '覆盖的国家/地区',
+        avgDays: '平均行程天数',
+        daysUnit: '天',
+        countriesTitle: '热门国家',
+        countriesSubtitle: '按提问频率排序',
+        citiesTitle: '热度城市',
+        citiesSubtitle: '最近 6 次提及',
+        timelineTitle: '年度行程精选',
+        timelineSubtitle: '来自你的聊天灵感',
+        visitsCount: '访问次数：{{count}}',
       },
     },
   },
@@ -109,7 +158,6 @@ const resources = {
       layout: {
         appTitle: 'AI Travel Planner',
         searchPlaceholder: 'Search destinations, themes or travel groups',
-        newBoard: 'New board',
         personalWorkspace: 'Personal Workspace',
         workspaceName: 'YATA Travel',
       },
@@ -201,11 +249,61 @@ const resources = {
       },
       emptyState: {
         dashboardTitle: 'Travel overview coming soon',
-        dashboardDescription: 'You will see inspiration, favorites, and trip schedules here.',
-        dashboardAction: 'Back to AI planner',
+      dashboardDescription: 'You will see inspiration, favorites, and trip schedules here.',
+      dashboardAction: 'Back to AI planner',
         buildingTitle: 'Feature under construction',
         buildingDescription: 'We are building the experience for this section. Try the AI travel planner first.',
         buildingAction: 'Open AI assistant',
+      },
+      inspiration: {
+        title: 'Travel inspiration',
+        subtitle: 'Handpicked moods to spark a new trip',
+        sunnyCoast: {
+          title: 'Sunny coast getaway',
+          description: 'Unwind on Mallorca’s beaches with sailing and sunset dining.',
+        },
+        mountainRetreat: {
+          title: 'Mountain wellness escape',
+          description: 'Stay in a Swiss chalet, hike forest trails, and soak in thermal baths.',
+        },
+        cityWeekend: {
+          title: 'Art-forward city weekend',
+          description: 'Spend two days in Barcelona exploring Gaudí sites and tapas bars.',
+        },
+        tryPrompt: 'Plan with AI',
+      },
+      guides: {
+        title: 'City guides',
+        subtitle: 'Destinations inspired by your chats',
+        kyoto: {
+          summary: 'A calm blend of ancient temples and modern cafés.',
+          highlights: 'Visit Fushimi Inari, stroll Gion, and savor matcha tastings.'
+        },
+        lisbon: {
+          summary: 'Sun-soaked hills with tile-lined alleys and vintage trams.',
+          highlights: 'Don’t miss Belém Tower, LX Factory, and pastel de nata.'
+        },
+        seattle: {
+          summary: 'Waterfront skyline meets evergreen adventures.',
+          highlights: 'Climb the Space Needle, explore Pike Place, and head to Mt. Rainier.'
+        },
+        planAction: 'Generate itinerary',
+      },
+      dashboard: {
+        title: 'Travel overview',
+        subtitle: 'Insights generated from your chat history',
+        updatedAt: 'Updated on {{date}}',
+        totalTrips: 'Itineraries generated',
+        countriesExplored: 'Countries covered',
+        avgDays: 'Average trip length',
+        daysUnit: 'days',
+        countriesTitle: 'Top countries',
+        countriesSubtitle: 'Sorted by request volume',
+        citiesTitle: 'Popular cities',
+        citiesSubtitle: 'Most recent mentions',
+        timelineTitle: 'Featured trips by year',
+        timelineSubtitle: 'Highlights inspired by your chats',
+        visitsCount: 'Visits: {{count}}',
       },
     },
   },
