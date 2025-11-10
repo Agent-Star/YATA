@@ -47,8 +47,10 @@ def get_embedding_dimension() -> int:
 
     try:
         model = _get_model()
-        if hasattr(model, "get_sentence_embedding_dimension"):
-            return int(model.get_sentence_embedding_dimension())
+        if hasattr(model, "get_sentence_embedding_dimension") and (
+            dim := model.get_sentence_embedding_dimension()
+        ):
+            return int(dim)
         # 兜底：用单条文本编码推断维度
         dim = int(embed_texts(["test"]).shape[1])
         return dim

@@ -50,20 +50,20 @@ def split_text(text, min_len=200, max_len=500):
         sent = sent.strip()
         if not sent:
             continue
-        l = len(sent)
-        if length + l > max_len:
+        sent_len = len(sent)
+        if length + sent_len > max_len:
             if current:
                 chunks.append("".join(current))
-                current, length = [sent], l
+                current, length = [sent], sent_len
             else:
                 chunks.append(sent)
-        elif length + l >= min_len:
+        elif length + sent_len >= min_len:
             current.append(sent)
             chunks.append("".join(current))
             current, length = [], 0
         else:
             current.append(sent)
-            length += l
+            length += sent_len
     if current:
         chunks.append("".join(current))
     return [c for c in chunks if len(c) >= 100]
@@ -140,7 +140,7 @@ def clean_infobox(raw_infobox):
             try:
                 val = raw_infobox[key].strip().replace("°C", "").replace(",", "")
                 cleaned[clean_key] = round(float(val), 1)
-            except:
+            except Exception:
                 pass
 
     # 文本字段提取

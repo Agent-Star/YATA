@@ -5,11 +5,13 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from config import settings
 
-_client: chromadb.ClientAPI | None = None
+type ClientAPI = chromadb.ClientAPI  # pyright: ignore[reportPrivateImportUsage]
+
+_client: ClientAPI | None = None
 _collection: chromadb.Collection | None = None
 
 
-def _get_client() -> chromadb.ClientAPI:
+def _get_client() -> ClientAPI:
     """获取 Chroma 客户端（持久化到本地目录）"""
     global _client
     if _client is None:
@@ -177,8 +179,8 @@ def get_stats(embedding_dim: int = 1024) -> dict:
     # 获取所有文档以提取城市列表
     results = collection.get(limit=10000)  # 根据需要调整
     cities = set()
-    if results.get("metadatas"):
-        for meta in results["metadatas"]:
+    if res := results.get("metadatas"):
+        for meta in res:
             if meta and "city" in meta:
                 cities.add(meta["city"])
 
@@ -203,7 +205,8 @@ def vector_search(
     results = collection.query(
         query_embeddings=[query_vector],
         n_results=top_k,
-        where=where,
+        # BUG: ignored `reportArgumentType`
+        where=where,  # pyright: ignore[reportArgumentType]
         include=["documents", "metadatas", "distances"],
     )
 
@@ -219,6 +222,12 @@ def vector_search(
     # }
 
     if not results["ids"] or not results["ids"][0]:
+        return []
+    if not results["documents"] or not results["documents"][0]:
+        return []
+    if not results["metadatas"] or not results["metadatas"][0]:
+        return []
+    if not results["distances"] or not results["distances"][0]:
         return []
 
     ids = results["ids"][0]
@@ -244,7 +253,8 @@ def vector_search(
                 "title": meta.get("title"),
                 "url": meta.get("url"),
                 "source_file": meta.get("source_file"),
-                "chunk_index": int(meta.get("chunk_index", 0))
+                # BUG: ignored `reportArgumentType`
+                "chunk_index": int(meta.get("chunk_index", 0))  # pyright: ignore[reportArgumentType]
                 if meta.get("chunk_index")
                 else None,
                 "content": doc_text,
