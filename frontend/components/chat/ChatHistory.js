@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Typography, Button } from '@douyinfe/semi-ui';
+import { Card, Typography, Button, Toast } from '@douyinfe/semi-ui';
 import {
   IconArrowUp,
   IconArrowDown,
   IconHeartStroked,
   IconLikeHeart,
+  IconCopy,
 } from '@douyinfe/semi-icons';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +18,14 @@ function ChatMessage({ message, onToggleFavorite }) {
   const handleFavoriteClick = () => {
     if (onToggleFavorite) {
       onToggleFavorite(message);
+    }
+  };
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(displayContent || '');
+      Toast.success(t('chat.copySuccess'));
+    } catch (error) {
+      Toast.error(t('chat.copyFailed'));
     }
   };
   return (
@@ -39,6 +48,14 @@ function ChatMessage({ message, onToggleFavorite }) {
           </div>
         </Card>
         <div className="chat-message__actions">
+          <Button
+            icon={<IconCopy />}
+            theme="borderless"
+            type="tertiary"
+            className="chat-message__favorite"
+            onClick={handleCopy}
+            aria-label={t('chat.copyMessage')}
+          />
           <Button
             icon={isFavorited ? <IconLikeHeart /> : <IconHeartStroked />}
             theme="borderless"

@@ -266,6 +266,7 @@ body {
 
 .chat-message__actions {
   display: flex;
+  gap: 4px;
   width: 100%;
   opacity: 0;
   pointer-events: none;
