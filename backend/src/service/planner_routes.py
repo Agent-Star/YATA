@@ -151,7 +151,7 @@ async def get_history(
         frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
 
         # 查询用户的所有收藏记录
-        stmt = select(Favorite.message_id).where(Favorite.user_id == str(current_user.id))
+        stmt = select(Favorite.message_id).where(Favorite.user_id == current_user.id)
         result = await session.execute(stmt)
         favorited_message_ids = {row[0] for row in result.fetchall()}
 
@@ -284,7 +284,7 @@ async def delete_history(
     """
     try:
         # 删除用户的所有收藏记录 (保持数据一致性)
-        stmt = delete(Favorite).where(Favorite.user_id == str(current_user.id))
+        stmt = delete(Favorite).where(Favorite.user_id == current_user.id)
         await session.execute(stmt)
         await session.commit()
 
@@ -341,7 +341,7 @@ async def create_favorite(
 
         # 4. 检查是否已收藏
         stmt = select(Favorite).where(
-            Favorite.user_id == str(current_user.id),
+            Favorite.user_id == current_user.id,
             Favorite.message_id == request.messageId,
         )
         result = await session.execute(stmt)
@@ -359,8 +359,8 @@ async def create_favorite(
 
         # 6. 创建收藏记录
         favorite = Favorite(
-            id=str(uuid4()),
-            user_id=str(current_user.id),
+            id=uuid4(),
+            user_id=current_user.id,
             message_id=request.messageId,
             role=role,
             content=content,
@@ -408,7 +408,7 @@ async def delete_favorite(
     try:
         # 删除收藏记录 (基于 user_id + message_id)
         stmt = delete(Favorite).where(
-            Favorite.user_id == str(current_user.id),
+            Favorite.user_id == current_user.id,
             Favorite.message_id == message_id,
         )
 

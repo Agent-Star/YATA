@@ -2,11 +2,12 @@
 
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi_users import schemas
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, MetaData, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # 定义 SQLAlchemy 元数据，用于表命名约定
@@ -74,12 +75,12 @@ class Favorite(Base):
 
     __tablename__ = "favorites"
 
-    # 主键
-    id: Mapped[str] = mapped_column(String(length=36), primary_key=True, default=lambda: str(uuid4()))
+    # 主键 (使用 UUID 类型, 兼容 PostgreSQL 和 SQLite)
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
 
-    # 用户关联 (外键)
-    user_id: Mapped[str] = mapped_column(
-        String(length=36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    # 用户关联 (外键, 类型必须与 users.id 一致)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     # 消息标识
