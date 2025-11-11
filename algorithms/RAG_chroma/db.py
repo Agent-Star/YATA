@@ -254,6 +254,8 @@ def vector_search(
                 "content": doc_text,
                 "score": score,
                 "created_at": meta.get("timestamp"),  # 从 metadata 中获取 timestamp
+                "author": meta.get("author"),
+                "day": meta.get("day"),
             }
         )
 

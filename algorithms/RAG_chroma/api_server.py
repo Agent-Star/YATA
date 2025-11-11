@@ -32,6 +32,7 @@ class SearchRequest(BaseModel):
 
     query: str
     city: Optional[str] = None
+    day: Optional[str] = None
     top_k: Optional[int] = None
 
 
@@ -93,8 +94,8 @@ async def search_api(request: SearchRequest):
         if not request.query or not request.query.strip():
             raise HTTPException(status_code=400, detail="查询不能为空")
 
-        # 执行搜索
-        results = search(query=request.query, city=request.city, top_k=request.top_k)
+        # 执行搜索（支持 day 软优先，与 CLI 行为一致）
+        results = search(query=request.query, city=request.city, day=request.day, top_k=request.top_k)
 
         # 格式化上下文
         contexts = format_contexts(results)

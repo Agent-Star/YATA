@@ -22,6 +22,7 @@ def main():
         help="Path to input JSON (default: question.json in current directory)",
     )
     parser.add_argument("--city", type=str, default=None, help="Optional city filter")
+    parser.add_argument("--day", type=str, default=None, help="Optional day preference")
     parser.add_argument("--top_k", type=int, default=None, help="Override top_k")
     args = parser.parse_args()
 
@@ -51,6 +52,8 @@ def main():
     city: Optional[str] = args.city or data.get("city")
     # prefer explicit top_k arg over payload top_k
     top_k: Optional[int] = args.top_k or data.get("top_k")
+    # optional day preference from payload 
+    day: Optional[str] = args.day or data.get("day")
 
     # 使用当前模型的向量维度初始化数据库表结构
     try:
@@ -60,7 +63,7 @@ def main():
     init_db(embedding_dim=emb_dim)
 
     # 执行检索
-    results = search(question, city=city, top_k=top_k)
+    results = search(question, city=city, day=day, top_k=top_k)
     prompt = build_prompt(question, results)
     print(prompt)
 
