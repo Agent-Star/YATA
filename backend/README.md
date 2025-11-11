@@ -59,7 +59,7 @@
 4. 启动后端服务
 
     ```bash
-    python src/service/service.py
+    python src/run_service.py
     ```
 
 5. 启动简易前端界面 (可选)
