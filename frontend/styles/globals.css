@@ -201,9 +201,15 @@ body {
 }
 
 .chat-header {
-  margin-bottom: 24px;
+  margin-bottom: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
+.chat-header__clear {
+  align-self: flex-start;
+}
 .quick-actions {
   margin-bottom: 24px;
 }
@@ -768,7 +774,14 @@ body {
 
 .chat-composer__actions {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  margin-left: 16px;
+}
+
+.chat-composer__action-button {
+  width: 100%;
 }
 
 .empty-state {

@@ -7,6 +7,7 @@ import {
   fetchHistory,
   saveFavorite,
   deleteFavorite,
+  deleteHistory,
 } from '@lib/services/aiPlanner';
 
 export function usePlanner() {
@@ -270,7 +271,7 @@ export function usePlanner() {
         metadata: null,
         isStreaming: false,
         isFavorited: false,
-        serverMessageId: null,
+        serverMessageId: 'assistant-welcome',
       };
 
       const nextMessages =
@@ -302,7 +303,7 @@ export function usePlanner() {
             metadata: null,
             isStreaming: false,
             isFavorited: false,
-            serverMessageId: null,
+            serverMessageId: 'assistant-welcome',
           },
         ],
       });
@@ -471,5 +472,25 @@ export function usePlanner() {
     hasInitializedHistory,
     toggleFavoriteMessage,
     removeFavorite,
+    clearLocalHistory: () => {
+      dispatch({
+        type: 'SET_MESSAGES',
+        payload: [
+          {
+            id: 'assistant-welcome',
+            role: 'assistant',
+            content: t('chat.initialMessage'),
+            metadata: null,
+            isStreaming: false,
+            isFavorited: false,
+            serverMessageId: 'assistant-welcome',
+          },
+        ],
+      });
+      dispatch({ type: 'SET_FAVORITES', payload: [] });
+    },
+    deleteRemoteHistory: async () => {
+      await deleteHistory();
+    },
   };
 }

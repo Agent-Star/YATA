@@ -225,3 +225,9 @@ export async function deleteFavorite(messageId) {
     method: 'DELETE',
   });
 }
+
+export async function deleteHistory() {
+  return apiRequest('/planner/history', {
+    method: 'DELETE',
+  });
+}

@@ -10,7 +10,7 @@ function QuickActionList({ actions, onSelect }) {
 
   return (
     <div className="quick-actions">
-      <Typography.Text type="tertiary">{t('quickActions.title')}</Typography.Text>
+      <Typography.Text type="tertiary" style={{ marginRight: 5 }}>{t('quickActions.title')}</Typography.Text>
       <Space wrap spacing={12} style={{ marginTop: 12 }}>
         {actions.map((action) => (
           <Button
