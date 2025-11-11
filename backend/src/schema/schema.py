@@ -173,3 +173,29 @@ class ChatHistoryInput(BaseModel):
 
 class ChatHistory(BaseModel):
     messages: list[ChatMessage]
+
+
+# === 收藏相关 Schema ===
+
+
+class FavoriteCreate(BaseModel):
+    """创建收藏请求"""
+
+    messageId: str = Field(description="被收藏消息的唯一 ID")
+
+
+class FavoriteRead(BaseModel):
+    """收藏记录响应"""
+
+    id: str = Field(description="收藏记录 ID")
+    messageId: str = Field(description="消息 ID")
+    role: str = Field(description="消息角色 (user/assistant)")
+    content: str = Field(description="消息内容")
+    metadata: dict[str, Any] | None = Field(default=None, description="消息元数据")
+    savedAt: str = Field(description="收藏时间 (ISO 8601 UTC)")
+
+
+class FavoriteResponse(BaseModel):
+    """POST /planner/favorites 响应"""
+
+    favorite: FavoriteRead

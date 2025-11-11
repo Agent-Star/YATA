@@ -1,11 +1,13 @@
 """用户认证数据模型"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID, uuid4
 
 from fastapi_users import schemas
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import DateTime, Integer, MetaData, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, MetaData, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # 定义 SQLAlchemy 元数据，用于表命名约定
@@ -47,10 +49,13 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     )
     full_name: Mapped[Optional[str]] = mapped_column(String(length=100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     # 用于跟踪用户对话使用情况
     total_conversations: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -59,6 +64,43 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     main_thread_id: Mapped[Optional[str]] = mapped_column(
         String(length=100), index=True, nullable=True
     )
+
+
+class Favorite(Base):
+    """
+    用户收藏记录表
+
+    用于存储用户收藏的消息, 支持快速查询和标记.
+    """
+
+    __tablename__ = "favorites"
+
+    # 主键 (使用 UUID 类型, 兼容 PostgreSQL 和 SQLite)
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+
+    # 用户关联 (外键, 类型必须与 users.id 一致)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    # 消息标识
+    message_id: Mapped[str] = mapped_column(String(length=100), nullable=False, index=True)
+
+    # 消息内容 (冗余存储, 避免从 Thread 中反复查询)
+    role: Mapped[str] = mapped_column(String(length=20), nullable=False, default="assistant")
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # 消息元数据 (JSON 格式, 可选)
+    # 注意: 使用 message_metadata 而非 metadata (metadata 是 SQLAlchemy 保留字段)
+    message_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # 收藏时间
+    saved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    # 复合唯一索引: 防止同一用户重复收藏同一消息
+    __table_args__ = (Index("ix_favorites_user_message", "user_id", "message_id", unique=True),)
 
 
 # === Pydantic Schemas for API ===
