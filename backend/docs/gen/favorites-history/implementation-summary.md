@@ -2,11 +2,13 @@
 
 ## 实现完成时间
 
-2025-11-11
+2025-11-11 (收藏功能 + 历史删除功能)
 
 ## 功能概述
 
 已成功实现 YATA 后端的"收藏"和"历史记录删除"两大核心功能，共涉及 4 个新增接口和 1 个接口修改。
+
+**✅ 所有功能已完整实现并通过类型检查**
 
 ---
 
@@ -82,16 +84,52 @@ class FrontendMessage(BaseModel):
 
 ### ✅ API 路由层
 
-#### 5. DELETE /planner/history - 删除历史记录
+#### 5. DELETE /planner/history - 删除历史记录 ✅
 
 **实现要点**:
 
 - 先删除用户的所有收藏记录 (数据一致性)
-- 创建新 Thread ID 替换旧的 `main_thread_id`
+- 调用 `create_new_thread_for_user` 创建新 Thread ID 替换旧的 `main_thread_id`
 - 旧 Thread 数据保留, 便于未来扩展"恢复"功能
 - 幂等操作: 重复调用不报错
+- 完整的异常处理和日志记录
 
-**代码位置**: `src/service/planner_routes.py:265-294`
+**代码位置**: `src/service/planner_routes.py:274-303`
+
+**实现代码**:
+
+```python
+@planner_router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_history(
+    current_user: Annotated[User, Depends(current_active_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """
+    删除用户的历史对话记录
+
+    实现方式: 为用户创建新的主 Thread ID, 旧的历史记录将无法访问.
+    幂等操作: 重复调用不会报错.
+    """
+    try:
+        # 删除用户的所有收藏记录 (保持数据一致性)
+        stmt = delete(Favorite).where(Favorite.user_id == current_user.id)
+        await session.execute(stmt)
+        await session.commit()
+
+        # 调用 thread_manager 创建新 Thread
+        new_thread_id = await create_new_thread_for_user(current_user, session)
+
+        logger.info(f"用户 {current_user.id} 的历史记录已清空, 新 Thread ID: {new_thread_id}")
+
+        # 返回 204 无内容
+
+    except Exception as e:
+        logger.error(f"删除历史记录失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "API_ERROR", "message": "删除历史记录失败"},
+        )
+```
 
 #### 6. POST /planner/favorites - 收藏消息
 
