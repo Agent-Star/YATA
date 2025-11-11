@@ -364,7 +364,7 @@ async def create_favorite(
             message_id=request.messageId,
             role=role,
             content=content,
-            metadata=msg_metadata,
+            message_metadata=msg_metadata,
             saved_at=datetime.now(timezone.utc),
         )
 
@@ -379,7 +379,7 @@ async def create_favorite(
                 messageId=favorite.message_id,
                 role=favorite.role,
                 content=favorite.content,
-                metadata=favorite.metadata,
+                metadata=favorite.message_metadata,
                 savedAt=favorite.saved_at.isoformat(),
             )
         )

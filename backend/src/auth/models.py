@@ -90,7 +90,8 @@ class Favorite(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
     # 消息元数据 (JSON 格式, 可选)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # 注意: 使用 message_metadata 而非 metadata (metadata 是 SQLAlchemy 保留字段)
+    message_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # 收藏时间
     saved_at: Mapped[datetime] = mapped_column(
