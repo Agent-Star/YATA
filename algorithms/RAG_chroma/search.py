@@ -32,7 +32,7 @@ def _expand_query(query: str) -> str:
 
 
 def search(
-    query: str, city: Optional[str] = None, top_k: Optional[int] = None
+    query: str, city: Optional[str] = None, day: Optional[str] = None, top_k: Optional[int] = None
 ) -> List[Dict[str, Any]]:
     if not query or not query.strip():
         return []
@@ -87,6 +87,15 @@ def search(
 
         # 按新分数重新排序
         filtered.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    # 若传入 day，且存在匹配该 day 的结果，则优先只保留这些；否则保留全部
+    if day is not None and filtered:
+        day_str = str(day)
+        day_matched = [r for r in filtered if str(r.get("day")) == day_str]
+        if day_matched:
+            # 已经包含排序分数，保留并按分数排序
+            day_matched.sort(key=lambda x: x.get("score", 0), reverse=True)
+            return day_matched[:k]
 
     # 返回 top_k 结果
     return filtered[:k]
