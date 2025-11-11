@@ -1,4 +1,5 @@
 {
   "pythonVersion": "3.13",
-  "typeCheckingMode": "strict"
+  "typeCheckingMode": "standard",
+  "venvPath": "./.venv/Scripts"
 }
