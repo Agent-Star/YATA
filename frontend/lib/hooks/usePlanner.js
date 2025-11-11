@@ -7,12 +7,14 @@ import {
   fetchHistory,
   saveFavorite,
   deleteFavorite,
+  deleteHistory,
 } from '@lib/services/aiPlanner';
 
 export function usePlanner() {
   const { t, i18n } = useTranslation();
   const { state, dispatch } = usePlannerContext();
   const { hasInitializedHistory } = state;
+  const pendingFavoriteQueue = state.pendingFavoriteSyncQueue || [];
 
   const setActiveSection = useCallback(
     (sectionKey) => {
@@ -248,18 +250,18 @@ export function usePlanner() {
       const history = await fetchHistory();
       const mappedMessages = Array.isArray(history?.messages)
         ? history.messages.map((item) => ({
-            id: item.id,
-            role: item.role,
-            content: item.content,
-            contentKey: item.contentKey || null,
-            contentParams: item.contentParams || null,
-            metadata: item.metadata || null,
-            isStreaming: false,
-            isFavorited: Boolean(item.isFavorited),
-            serverMessageId: item.id,
-            createdAt: item.createdAt || null,
-            savedAt: item.savedAt || null,
-          }))
+          id: item.id,
+          role: item.role,
+          content: item.content,
+          contentKey: item.contentKey || null,
+          contentParams: item.contentParams || null,
+          metadata: item.metadata || null,
+          isStreaming: false,
+          isFavorited: Boolean(item.isFavorited),
+          serverMessageId: item.id,
+          createdAt: item.createdAt || null,
+          savedAt: item.savedAt || null,
+        }))
         : null;
 
       const fallbackMessage = {
@@ -269,7 +271,7 @@ export function usePlanner() {
         metadata: null,
         isStreaming: false,
         isFavorited: false,
-        serverMessageId: null,
+        serverMessageId: 'assistant-welcome',
       };
 
       const nextMessages =
@@ -289,6 +291,7 @@ export function usePlanner() {
           savedAt: message.savedAt || message.createdAt || Date.now(),
         }));
       dispatch({ type: 'SET_FAVORITES', payload: derivedFavorites });
+      dispatch({ type: 'QUEUE_FAVORITE_SYNC', payload: [] });
     } catch (error) {
       dispatch({
         type: 'SET_MESSAGES',
@@ -300,16 +303,56 @@ export function usePlanner() {
             metadata: null,
             isStreaming: false,
             isFavorited: false,
-            serverMessageId: null,
+            serverMessageId: 'assistant-welcome',
           },
         ],
       });
       dispatch({ type: 'SET_FAVORITES', payload: [] });
+      dispatch({ type: 'QUEUE_FAVORITE_SYNC', payload: [] });
     } finally {
       dispatch({ type: 'SET_HISTORY_INITIALIZED' });
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [dispatch, t]);
+
+  const flushFavoriteQueue = useCallback(
+    async (queueOverride) => {
+      const sourceQueue =
+        queueOverride !== undefined ? queueOverride : pendingFavoriteQueue;
+
+      if (!sourceQueue.length) {
+        return;
+      }
+
+      const queueSnapshot = [...sourceQueue];
+      let remaining = [];
+
+      for (let i = 0; i < queueSnapshot.length; i += 1) {
+        const item = queueSnapshot[i];
+
+        try {
+          if (item.isFavorited) {
+            await saveFavorite(item.messageId);
+          } else {
+            await deleteFavorite(item.messageId);
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Failed to sync favorite queue item', error);
+          remaining = queueSnapshot.slice(i);
+          break;
+        }
+      }
+
+      if (remaining.length !== queueSnapshot.length) {
+        dispatch({
+          type: 'QUEUE_FAVORITE_SYNC',
+          payload: remaining,
+        });
+      }
+    },
+    [dispatch, pendingFavoriteQueue]
+  );
 
   const toggleFavoriteMessage = useCallback(
     async (message) => {
@@ -329,48 +372,55 @@ export function usePlanner() {
         message.content ||
         (message.contentKey ? t(message.contentKey, message.contentParams) : '');
 
-      try {
-        if (message.isFavorited) {
-          await deleteFavorite(targetId);
-          dispatch({
-            type: 'TOGGLE_FAVORITE',
-            payload: {
-              messageId: targetId,
-              favorite: null,
-              isFavorited: false,
-            },
-          });
-        } else {
-          const response = await saveFavorite(targetId);
-          const favoritePayload =
-            response?.favorite ||
-            response || {
-              id: `favorite-${targetId}`,
-              messageId: targetId,
-              role: message.role,
-              content: resolvedContent,
-              contentKey: message.contentKey || null,
-              contentParams: message.contentParams || null,
-              metadata: message.metadata || null,
-              savedAt: Date.now(),
-            };
+      const favoritePayload = {
+        id: `favorite-${targetId}`,
+        messageId: targetId,
+        role: message.role,
+        content: resolvedContent,
+        contentKey: message.contentKey || null,
+        contentParams: message.contentParams || null,
+        metadata: message.metadata || null,
+        savedAt: Date.now(),
+      };
 
-          dispatch({
-            type: 'TOGGLE_FAVORITE',
-            payload: {
-              messageId: targetId,
-              favorite: favoritePayload,
-              isFavorited: true,
-            },
-          });
+      const willFavorite = !message.isFavorited;
+
+      dispatch({
+        type: 'TOGGLE_FAVORITE',
+        payload: {
+          messageId: targetId,
+          favorite: willFavorite ? favoritePayload : null,
+          isFavorited: willFavorite,
+        },
+      });
+
+      try {
+        if (willFavorite) {
+          await saveFavorite(targetId);
+        } else {
+          await deleteFavorite(targetId);
         }
+
+        const queueAfterRemoval = pendingFavoriteQueue.filter(
+          (item) => item.messageId !== targetId
+        );
+        dispatch({
+          type: 'QUEUE_FAVORITE_SYNC',
+          payload: queueAfterRemoval,
+        });
+        await flushFavoriteQueue(queueAfterRemoval);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Failed to toggle favorite', error);
-        Toast.error(t('chat.favoriteToggleError'));
+        console.error('Failed to sync favorite', error);
+        Toast.error(t('chat.favoriteSyncError'));
+        const filteredQueue = pendingFavoriteQueue.filter((item) => item.messageId !== targetId);
+        dispatch({
+          type: 'QUEUE_FAVORITE_SYNC',
+          payload: [...filteredQueue, { messageId: targetId, isFavorited: willFavorite }],
+        });
       }
     },
-    [dispatch, t]
+    [dispatch, flushFavoriteQueue, pendingFavoriteQueue, t]
   );
 
   const removeFavorite = useCallback(
@@ -379,23 +429,38 @@ export function usePlanner() {
         return;
       }
 
+      dispatch({
+        type: 'TOGGLE_FAVORITE',
+        payload: {
+          messageId,
+          favorite: null,
+          isFavorited: false,
+        },
+      });
       try {
         await deleteFavorite(messageId);
+        const queueAfterRemoval = pendingFavoriteQueue.filter(
+          (item) => item.messageId !== messageId
+        );
         dispatch({
-          type: 'TOGGLE_FAVORITE',
-          payload: {
-            messageId,
-            favorite: null,
-            isFavorited: false,
-          },
+          type: 'QUEUE_FAVORITE_SYNC',
+          payload: queueAfterRemoval,
         });
+        await flushFavoriteQueue(queueAfterRemoval);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to remove favorite', error);
-        Toast.error(t('chat.favoriteToggleError'));
+        Toast.error(t('chat.favoriteSyncError'));
+        dispatch({
+          type: 'QUEUE_FAVORITE_SYNC',
+          payload: [
+            ...pendingFavoriteQueue.filter((item) => item.messageId !== messageId),
+            { messageId, isFavorited: false },
+          ],
+        });
       }
     },
-    [dispatch, t]
+    [dispatch, flushFavoriteQueue, pendingFavoriteQueue, t]
   );
 
   return {
@@ -407,5 +472,25 @@ export function usePlanner() {
     hasInitializedHistory,
     toggleFavoriteMessage,
     removeFavorite,
+    clearLocalHistory: () => {
+      dispatch({
+        type: 'SET_MESSAGES',
+        payload: [
+          {
+            id: 'assistant-welcome',
+            role: 'assistant',
+            content: t('chat.initialMessage'),
+            metadata: null,
+            isStreaming: false,
+            isFavorited: false,
+            serverMessageId: 'assistant-welcome',
+          },
+        ],
+      });
+      dispatch({ type: 'SET_FAVORITES', payload: [] });
+    },
+    deleteRemoteHistory: async () => {
+      await deleteHistory();
+    },
   };
 }

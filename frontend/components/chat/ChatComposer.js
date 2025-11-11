@@ -8,6 +8,7 @@ function ChatComposer({
   onChange,
   onSend,
   onVoiceInput,
+  onClearHistory,
   isLoading,
   isListening,
   isVoiceSupported,
@@ -81,12 +82,26 @@ function ChatComposer({
         />
       </div>
       <div className="chat-composer__actions">
+        {onClearHistory ? (
+          <Button
+            type="primary"
+            theme="solid"
+            block
+            onClick={onClearHistory}
+            disabled={isLoading}
+            className="chat-composer__action-button"
+          >
+            {t('chat.clearHistory')}
+          </Button>
+        ) : null}
         <Button
           type="primary"
           theme="solid"
           onClick={onSend}
           loading={isLoading}
           disabled={isLoading || !value.trim()}
+          block
+          className="chat-composer__action-button"
         >
           {t('chat.sendButton')}
         </Button>
@@ -97,10 +112,11 @@ function ChatComposer({
 
 ChatComposer.defaultProps = {
   value: '',
+  onClearHistory: null,
   isLoading: false,
-  onChange: () => {},
-  onSend: () => {},
-  onVoiceInput: () => {},
+  onChange: () => { },
+  onSend: () => { },
+  onVoiceInput: () => { },
   isListening: false,
   isVoiceSupported: true,
 };

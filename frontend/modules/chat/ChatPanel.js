@@ -4,13 +4,15 @@ import ChatHeader from '@components/chat/ChatHeader';
 import ChatHistory from '@components/chat/ChatHistory';
 import QuickActionList from '@components/chat/QuickActionList';
 import { usePlanner } from '@lib/hooks/usePlanner';
-import { Toast } from '@douyinfe/semi-ui';
+import { Modal, Toast, Button } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 
 function ChatPanel() {
   const [draft, setDraft] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isVoiceSupported, setIsVoiceSupported] = useState(true);
+  const [isClearModalVisible, setIsClearModalVisible] = useState(false);
+  const [isClearingCloud, setIsClearingCloud] = useState(false);
   const recognitionRef = useRef(null);
   const {
     state: { messages, quickActions, isLoading, hasInitializedHistory },
@@ -18,6 +20,8 @@ function ChatPanel() {
     triggerQuickAction,
     loadHistory,
     toggleFavoriteMessage,
+    clearLocalHistory,
+    deleteRemoteHistory,
   } = usePlanner();
   const { i18n, t } = useTranslation();
 
@@ -130,8 +134,6 @@ function ChatPanel() {
       recognitionRef.current.lang = i18n?.language || 'en-US';
       recognitionRef.current.start();
     } catch (error) {
-      // start() will throw if called multiple times without user gesture
-      // Reset local listening state so the user can try again.
       // eslint-disable-next-line no-console
       console.error('Failed to start speech recognition', error);
       setIsListening(false);
@@ -139,6 +141,30 @@ function ChatPanel() {
       if (error.name === 'NotAllowedError' || error.message === 'not-allowed') {
         Toast.warning(t('chat.voiceInputPermissionDenied'));
       }
+    }
+  };
+
+  const handleClearHistory = () => {
+    setIsClearModalVisible(true);
+  };
+
+  const handleClearLocalOnly = () => {
+    clearLocalHistory();
+    Toast.info(t('chat.clearHistoryLocalSuccess'));
+    setIsClearModalVisible(false);
+  };
+
+  const handleClearCloud = async () => {
+    clearLocalHistory();
+    setIsClearingCloud(true);
+    try {
+      await deleteRemoteHistory();
+      Toast.success(t('chat.clearHistoryCloudSuccess'));
+    } catch (error) {
+      Toast.error(t('chat.clearHistoryCloudFailed'));
+    } finally {
+      setIsClearingCloud(false);
+      setIsClearModalVisible(false);
     }
   };
 
@@ -159,7 +185,30 @@ function ChatPanel() {
         isListening={isListening}
         isVoiceSupported={isVoiceSupported}
         isLoading={isLoading}
+        onClearHistory={handleClearHistory}
       />
+      <Modal
+        title={t('chat.clearHistoryPromptTitle')}
+        visible={isClearModalVisible}
+        onCancel={() => setIsClearModalVisible(false)}
+        maskClosable={false}
+        footer={[
+          <Button key="local" onClick={handleClearLocalOnly}>
+            {t('chat.clearHistoryLocalOnly')}
+          </Button>,
+          <Button
+            key="cloud"
+            theme="solid"
+            loading={isClearingCloud}
+            onClick={handleClearCloud}
+          >
+            {t('chat.clearHistoryCloudConfirm')}
+          </Button>,
+        ]}
+      >
+        <p>{t('chat.clearHistoryPrompt')}</p>
+        <p>{t('chat.clearHistoryCloud')}</p>
+      </Modal>
     </div>
   );
 }

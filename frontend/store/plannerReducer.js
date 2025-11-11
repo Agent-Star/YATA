@@ -7,6 +7,7 @@ export const initialPlannerState = {
   quickActions,
   messages: [],
   favorites: [],
+  pendingFavoriteSyncQueue: [],
   isLoading: false,
   hasInitializedHistory: false,
 };
@@ -104,6 +105,13 @@ export function plannerReducer(state, action) {
 
           return message;
         }),
+      };
+    }
+    case 'QUEUE_FAVORITE_SYNC': {
+      const queue = Array.isArray(action.payload) ? action.payload : [];
+      return {
+        ...state,
+        pendingFavoriteSyncQueue: queue,
       };
     }
     default:
