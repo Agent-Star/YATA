@@ -5,3 +5,6 @@
 
 # proposal
 proposal/
+
+# claude code
+.claude/
