@@ -140,6 +140,39 @@ body {
   flex-shrink: 0;
 }
 
+.topbar__bell {
+  position: relative;
+}
+
+.topbar__notification-item {
+  padding: 0 !important;
+  width: 100%;
+  display: block;
+}
+
+.topbar__notification-card {
+  box-shadow: none;
+  padding: 12px 16px;
+  background: transparent;
+  border-radius: 0;
+  width: 100%;
+  display: block;
+  transition: background 0.2s ease;
+}
+
+.topbar__notification-card--unread {
+  background: rgba(191, 219, 254, 0.24);
+}
+
+.topbar__notification-card--read {
+  background: transparent;
+  opacity: 0.85;
+}
+
+.topbar__notification-item:hover .topbar__notification-card {
+  background: rgba(226, 232, 240, 0.8);
+}
+
 .language-switcher {
   display: flex;
   gap: 6px;

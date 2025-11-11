@@ -7,6 +7,15 @@ const resources = {
         personalWorkspace: '个人空间',
         workspaceName: 'YATA Travel',
       },
+      notifications: {
+        header: '最新更新',
+        dashboardTitle: '旅行统计上线',
+        dashboardDescription: '新增旅行数据概览页面，快速掌握热门国家与城市。',
+        voiceTitle: '语音输入体验优化',
+        voiceDescription: '支持在聊天中长按语音按钮进行自由录音。',
+        favoritesTitle: '收藏功能增强',
+        favoritesDescription: '收藏可在“行程收藏”页查看，并支持云端同步提示。',
+      },
       sidebar: {
         workspace: '工作区',
         collections: '精选集合',
@@ -161,6 +170,15 @@ const resources = {
         searchPlaceholder: 'Search destinations, themes or travel groups',
         personalWorkspace: 'Personal Workspace',
         workspaceName: 'YATA Travel',
+      },
+      notifications: {
+        header: 'Recent updates',
+        dashboardTitle: 'Travel overview launched',
+        dashboardDescription: 'See your top countries, cities, and yearly highlights.',
+        voiceTitle: 'Voice input polished',
+        voiceDescription: 'Start/stop recording directly from the microphone button.',
+        favoritesTitle: 'Favorites enhanced',
+        favoritesDescription: 'Saved trips now sync with the new Saved Trips page.',
       },
       sidebar: {
         workspace: 'Workspace',
