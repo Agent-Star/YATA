@@ -279,6 +279,8 @@ async def delete_history(
     """
     删除用户的历史对话记录
 
+    前端适配接口, 对应 DELETE /planner/history
+
     实现方式: 为用户创建新的主 Thread ID, 旧的历史记录将无法访问.
     幂等操作: 重复调用不会报错.
     """
@@ -311,6 +313,8 @@ async def create_favorite(
 ) -> FavoriteResponse:
     """
     收藏指定消息
+
+    前端适配接口, 对应 POST /planner/favorites
 
     从用户的历史记录中查找消息并创建收藏记录.
     若消息不存在或已收藏, 返回相应错误.
@@ -402,6 +406,8 @@ async def delete_favorite(
 ) -> None:
     """
     取消收藏指定消息
+
+    前端适配接口, 对应 DELETE /planner/favorites/{message_id}
 
     幂等操作: 若消息未收藏, 也返回 204.
     """
