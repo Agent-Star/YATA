@@ -7,21 +7,26 @@
 import json
 import logging
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
 from agents.timestamp import create_timestamped_message
 from auth import User, current_active_user
 from auth.database import get_async_session
+from auth.models import Favorite
 from core import settings
-from service.thread_manager import get_or_create_main_thread
+from schema.schema import FavoriteCreate, FavoriteRead, FavoriteResponse
+from service.thread_manager import create_new_thread_for_user, get_or_create_main_thread
 from service.utils import convert_message_content_to_string, remove_tool_calls
 
 logger = logging.getLogger(__name__)
@@ -41,6 +46,7 @@ class FrontendMessage(BaseModel):
     content: str
     metadata: dict[str, Any] | None = None  # nullable
     createdAt: str | None = None
+    isFavorited: bool = Field(default=False, description="是否已被当前用户收藏")
 
 
 class HistoryResponse(BaseModel):
@@ -143,6 +149,15 @@ async def get_history(
 
         # 转换为前端格式
         frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
+
+        # 查询用户的所有收藏记录
+        stmt = select(Favorite.message_id).where(Favorite.user_id == str(current_user.id))
+        result = await session.execute(stmt)
+        favorited_message_ids = {row[0] for row in result.fetchall()}
+
+        # 标记 isFavorited
+        for msg in frontend_messages:
+            msg.isFavorited = msg.id in favorited_message_ids
 
         # 显式按时间升序排列 (确保前端按正确顺序渲染)
         # 虽然 LangGraph 通常已按时间顺序存储, 但显式排序使代码意图更清晰
@@ -254,3 +269,159 @@ async def plan_stream(
             "X-Accel-Buffering": "no",  # 禁用 Nginx 缓冲
         },
     )
+
+
+@planner_router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_history(
+    current_user: Annotated[User, Depends(current_active_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """
+    删除用户的历史对话记录
+
+    实现方式: 为用户创建新的主 Thread ID, 旧的历史记录将无法访问.
+    幂等操作: 重复调用不会报错.
+    """
+    try:
+        # 删除用户的所有收藏记录 (保持数据一致性)
+        stmt = delete(Favorite).where(Favorite.user_id == str(current_user.id))
+        await session.execute(stmt)
+        await session.commit()
+
+        # 调用 thread_manager 创建新 Thread
+        new_thread_id = await create_new_thread_for_user(current_user, session)
+
+        logger.info(f"用户 {current_user.id} 的历史记录已清空, 新 Thread ID: {new_thread_id}")
+
+        # 返回 204 无内容
+
+    except Exception as e:
+        logger.error(f"删除历史记录失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "API_ERROR", "message": "删除历史记录失败"},
+        )
+
+
+@planner_router.post("/favorites", response_model=FavoriteResponse, status_code=status.HTTP_200_OK)
+async def create_favorite(
+    request: FavoriteCreate,
+    current_user: Annotated[User, Depends(current_active_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> FavoriteResponse:
+    """
+    收藏指定消息
+
+    从用户的历史记录中查找消息并创建收藏记录.
+    若消息不存在或已收藏, 返回相应错误.
+    """
+    try:
+        # 1. 获取用户的主 Thread ID
+        thread_id = await get_or_create_main_thread(current_user, session)
+
+        # 2. 从 Thread 历史中查找消息
+        agent: AgentGraph = get_agent(DEFAULT_AGENT)
+        config = RunnableConfig(configurable={"thread_id": thread_id})
+        state = await agent.aget_state(config=config)
+        messages: list[AnyMessage] = state.values.get("messages", [])
+
+        # 3. 查找目标消息
+        target_message: AnyMessage | None = None
+        for msg in messages:
+            msg_id = getattr(msg, "id", None) or str(id(msg))
+            if msg_id == request.messageId:
+                target_message = msg
+                break
+
+        if not target_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "MESSAGE_NOT_FOUND", "message": "消息不存在"},
+            )
+
+        # 4. 检查是否已收藏
+        stmt = select(Favorite).where(
+            Favorite.user_id == str(current_user.id),
+            Favorite.message_id == request.messageId,
+        )
+        result = await session.execute(stmt)
+        existing = result.scalar_one_or_none()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "ALREADY_FAVORITED", "message": "该消息已收藏"},
+            )
+
+        # 5. 提取消息内容和元数据
+        role = "user" if isinstance(target_message, HumanMessage) else "assistant"
+        content = str(target_message.content) if target_message.content else ""
+        msg_metadata = getattr(target_message, "response_metadata", None)
+
+        # 6. 创建收藏记录
+        favorite = Favorite(
+            id=str(uuid4()),
+            user_id=str(current_user.id),
+            message_id=request.messageId,
+            role=role,
+            content=content,
+            metadata=msg_metadata,
+            saved_at=datetime.now(timezone.utc),
+        )
+
+        session.add(favorite)
+        await session.commit()
+        await session.refresh(favorite)
+
+        # 7. 返回响应
+        return FavoriteResponse(
+            favorite=FavoriteRead(
+                id=str(favorite.id),
+                messageId=favorite.message_id,
+                role=favorite.role,
+                content=favorite.content,
+                metadata=favorite.metadata,
+                savedAt=favorite.saved_at.isoformat(),
+            )
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"创建收藏失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "API_ERROR", "message": "创建收藏失败"},
+        )
+
+
+@planner_router.delete("/favorites/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_favorite(
+    message_id: str,
+    current_user: Annotated[User, Depends(current_active_user)],
+    session: AsyncSession = Depends(get_async_session),
+) -> None:
+    """
+    取消收藏指定消息
+
+    幂等操作: 若消息未收藏, 也返回 204.
+    """
+    try:
+        # 删除收藏记录 (基于 user_id + message_id)
+        stmt = delete(Favorite).where(
+            Favorite.user_id == str(current_user.id),
+            Favorite.message_id == message_id,
+        )
+
+        await session.execute(stmt)
+        await session.commit()
+
+        logger.info(f"用户 {current_user.id} 取消收藏消息 {message_id}")
+
+        # 无论是否删除了记录, 都返回 204 (幂等)
+
+    except Exception as e:
+        logger.error(f"取消收藏失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "API_ERROR", "message": "取消收藏失败"},
+        )
