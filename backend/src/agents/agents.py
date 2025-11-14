@@ -12,9 +12,11 @@ from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
+from agents.travel_planner import travel_planner
 from schema import AgentInfo
 
-DEFAULT_AGENT = "research-assistant"
+# DEFAULT_AGENT = "research-assistant"
+DEFAULT_AGENT = "travel-planner"  # NLU + RAG, 先验证兜底策略
 
 # Type alias to handle LangGraph's different agent patterns
 # - @entrypoint functions return Pregel
@@ -35,6 +37,10 @@ agents: dict[str, Agent] = {
     ),
     "rag-assistant": Agent(
         description="A RAG assistant with access to information in a database.", graph=rag_assistant
+    ),
+    "travel-planner": Agent(
+        description="A travel planner powered by NLU/RAG, with fallback to research assistant.",
+        graph=travel_planner,
     ),
     "command-agent": Agent(description="A command agent.", graph=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),
