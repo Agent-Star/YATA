@@ -9,7 +9,6 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 
-from agents.agents import get_agent
 from agents.timestamp import add_timestamp_to_message
 from external_services import (
     NLUResponse,
@@ -145,6 +144,9 @@ async def fallback_to_research_assistant(
     Returns:
         更新后的状态
     """
+    # 延迟导入以避免循环导入
+    from agents.agents import get_agent
+
     logger.info("TravelPlanner: Fallback triggered, calling Research-Assistant")
 
     # 获取 Research-Assistant Agent

@@ -13,7 +13,6 @@ from external_services.exceptions import NLUServiceError, ServiceUnavailableErro
 
 logger = logging.getLogger(__name__)
 
-
 # === Pydantic 模型定义 ===
 
 
@@ -42,7 +41,7 @@ class NLUClient:
     def __init__(
         self,
         base_url: str = "http://localhost:8010",
-        timeout: float = 30.0,
+        timeout: float = 5.0,
         max_retries: int = 1,
     ):
         """
@@ -129,9 +128,7 @@ class NLUClient:
             raise ServiceUnavailableError(error_msg) from e
 
         except httpx.HTTPStatusError as e:
-            error_msg = (
-                f"NLU service returned error: {e.response.status_code} - {e.response.text}"
-            )
+            error_msg = f"NLU service returned error: {e.response.status_code} - {e.response.text}"
             logger.error(f"NLUClient: {error_msg}")
             raise NLUServiceError(error_msg) from e
 
