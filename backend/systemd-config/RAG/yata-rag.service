@@ -1,0 +1,18 @@
+[Unit]
+Description=YATA RAG Service
+After=network.target
+
+[Service]
+Type=simple
+# 注意: 此配置仅适用于用户级服务 (systemctl --user)
+WorkingDirectory=%h/YATA/algorithms/RAG_chroma
+Environment="PATH=%h/YATA/algorithms/RAG_chroma/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="RAG_API_PORT=8001"
+ExecStart=%h/YATA/algorithms/RAG_chroma/.venv/bin/python api_server.py
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
