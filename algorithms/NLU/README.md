@@ -26,7 +26,6 @@
   - `initial.py`：系统初始化入口  
   - `main.py`：NLU 模块主入口
 
-
 ## 功能特性
 
 1. **意图识别**：自动识别用户请求类型（行程规划/景点推荐）
@@ -89,6 +88,7 @@ curl http://localhost:8010/health
 ```
 
 **参数说明**：
+
 - `text` (必填): 用户输入的自然语言文本
 - `session_id` (可选): 会话 ID，用于维持对话上下文。不提供时会创建新会话
 
@@ -138,6 +138,7 @@ curl http://localhost:8010/health
 ```
 
 **参数说明**：
+
 - `text` (必填): 用户输入的自然语言文本(地点一定要是英文表示， rag调用需求)
 - `session_id` (可选): 会话 ID。不提供时自动创建新会话并返回新的 `session_id`
 
@@ -153,12 +154,14 @@ curl http://localhost:8010/health
 ```
 
 **响应字段说明**：
+
 - `session_id`: 会话 ID，后续请求使用此 ID 维持对话上下文
 - `type`: 任务类型，`itinerary`（行程规划）或 `recommendation`（推荐）
 - `status`: 状态，`complete`（完成）或 `incomplete`（需要补充信息）
 - `reply`: 格式化的自然语言回复（Markdown 格式）
 
 **状态说明**：
+
 - `status: "complete"`: 任务完成，返回完整的行程规划或推荐内容
 - `status: "incomplete"`: 需要更多信息，`reply` 字段包含追问内容
 
@@ -179,6 +182,7 @@ curl http://localhost:8010/health
 ## 使用示例
 
 ### Python 示例
+
 """
 注意目前追问功能在fastapi调用中还不是很好用，需要把信息提供完整
 行程类问题：目的地，天数，预算，人数，出发时间，出发地点
@@ -186,6 +190,7 @@ curl http://localhost:8010/health
 
 以及目前数据库方面，只有Paris比较齐全
 """
+
 #### 使用简化版接口（推荐）
 
 ```python
@@ -281,7 +286,6 @@ curl -X POST "http://localhost:8002/nlu/simple" \
      }'
 ```
 
-
 ## 任务类型说明
 
 ### 行程规划 (itinerary)
@@ -289,9 +293,11 @@ curl -X POST "http://localhost:8002/nlu/simple" \
 用户请求生成详细的旅行行程，包含：目的地，天数，预算，人数，出发时间，出发地点
 
 **示例输入**：
+
 - 规划一个4天的Pairs行程，包含博物馆和美食体验，预算8000元，一个成人，下周去, 从上海出发
 
 **响应特点**：
+
 - 返回详细的每日行程安排（Markdown 格式）
 - 会经过 Verifier 逻辑审查，确保行程合理性
 - 如果信息不足，会返回追问问题
@@ -301,11 +307,13 @@ curl -X POST "http://localhost:8002/nlu/simple" \
 用户请求推荐景点、餐厅、活动等，不要求详细行程。
 
 **示例输入**：
+
 - "推荐巴黎的顶级景点"
 - "北京有什么好吃的餐厅？"
 - "京都值得去的地方有哪些？"
 
 **响应特点**：
+
 - 返回推荐列表和自然语言摘要
 - 不经过 Verifier 审查
 - 基于 RAG 检索相关旅行信息
@@ -324,19 +332,19 @@ curl -X POST "http://localhost:8002/nlu/simple" \
 - 支持多用户同时使用，会话之间互不影响
 - 会话日志保存在 `NLU_module/log/{session_id}/` 目录下
 
-
 ## 架构说明
 
 ### 核心模块
- **NLU 模块** (`NLU_module/main.py`)
-   - Adviser: 主要对话生成模块（GPT-3.5/DeepSeek）
-   - Verifier: 逻辑审查模块（GPT-4o）
-   - RAG: 向量检索模块
 
+ **NLU 模块** (`NLU_module/main.py`)
+
+- Adviser: 主要对话生成模块（GPT-3.5/DeepSeek）
+- Verifier: 逻辑审查模块（GPT-4o）
+- RAG: 向量检索模块
 
 ### 处理流程
 
-```
+```txt
 用户输入
   ↓
 意图识别 (Adviser)
@@ -384,6 +392,3 @@ RAG 检索 (向量搜索)
 
 - 会话日志: `NLU_module/log/0/log.txt`
 - 历史记录: `NLU_module/log/0/history.txt`
-
-
-
