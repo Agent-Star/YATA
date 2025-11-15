@@ -1,3 +1,6 @@
+# temp
+temp/
+
 # Streamlit and sqlite
 .streamlit/secrets.toml
 checkpoints.db
