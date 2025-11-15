@@ -28,7 +28,10 @@ class Verifier:
             temperature=0.0,  # 保持输出稳定一致
         )
 
-        text = response.choices[0].message.content
+        if content := response.choices[0].message.content:
+            text = content.strip()
+        else:
+            text = ""
 
         # 自动解析 JSON 格式
         try:
