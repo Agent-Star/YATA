@@ -36,10 +36,43 @@
 
 ## 快速开始
 
-### 环境要求
+### 安装依赖
 
-- Python 3.8+
-- 已安装项目依赖（NLU_module、RAG_chroma 等模块）
+先安装 `uv` 包管理器:
+
+- linux / macos
+
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+- windows
+
+  ```powershell
+  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+  ```
+
+然后配置依赖:
+
+```bash
+uv sync
+```
+
+最后加载虚拟环境:
+
+- linux / macos
+
+  ```bash
+  uv venv
+  source .venv/bin/activate
+  ```
+
+- windows
+
+  ```powershell
+  uv venv
+  ./.venv/Scripts/activate
+  ```
 
 ### 启动服务器
 
