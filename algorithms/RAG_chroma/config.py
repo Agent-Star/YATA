@@ -33,7 +33,7 @@ class Settings:
     use_query_expansion: bool = os.getenv("USE_QUERY_EXPANSION", "1") == "1"
 
     # reranking
-    use_reranking: bool = os.getenv("USE_RERANKING", "1") == "1"
+    use_reranking: bool = os.getenv("USE_RERANKING", "0") == "1"
     rerank_top_k: int = int(os.getenv("RERANK_TOP_K", "20"))
     rerank_model_name: str = os.getenv(
         "RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
