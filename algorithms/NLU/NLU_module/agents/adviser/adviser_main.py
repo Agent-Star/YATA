@@ -1,6 +1,6 @@
 # adviser_main.py
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .adviser_aggregate import run_aggregate
 from .adviser_base import AdviserBase
@@ -74,7 +74,7 @@ class Adviser:
     def generate_response(
         self,
         user_input,
-        conversation_history: list = None,
+        conversation_history: Optional[list] = None,
         use_rag=True,
         rag_top_k=5,
         debug=False,

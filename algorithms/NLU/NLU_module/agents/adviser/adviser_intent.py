@@ -1,4 +1,6 @@
 # adviser_intent.py
+from typing import Optional
+
 from NLU_module.source.prompt import (
     prompt_clarify,
     prompt_normalize_date,
@@ -8,7 +10,7 @@ from NLU_module.source.prompt import (
 
 
 def run_intent_parsing(
-    adviser, user_input: str, conversation_history: list = None, debug=False
+    adviser, user_input: str, conversation_history: Optional[list] = None, debug=False
 ):
     """
     参数:

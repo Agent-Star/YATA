@@ -1,6 +1,7 @@
 # adviser_base.py
 import json
 import re
+from typing import Optional
 
 import torch
 from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
@@ -29,7 +30,9 @@ class AdviserBase:
         else:
             raise ValueError("Unsupported model name")
 
-    def _chat(self, prompt: str, temperature: float = 0.3, max_tokens: int = None):
+    def _chat(
+        self, prompt: str, temperature: float = 0.3, max_tokens: Optional[int] = None
+    ):
         if self.name == "gpt35":
             # 默认 max_tokens，对于长文本生成（如行程）使用更大的值
             if max_tokens is None:
@@ -46,7 +49,10 @@ class AdviserBase:
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            return resp.choices[0].message.content.strip()
+            if content := resp.choices[0].message.content:
+                return content.strip()
+            else:
+                return ""
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
         if torch.cuda.is_available():
@@ -59,9 +65,9 @@ class AdviserBase:
     def ask_json(
         self,
         prompt: str,
-        schema_hint: str = None,
+        schema_hint: Optional[str] = None,
         temperature=0.2,
-        max_tokens: int = None,
+        max_tokens: Optional[int] = None,
     ):
         guard = (
             f"\nFollow this JSON schema strictly:\n{schema_hint}\n"
@@ -82,5 +88,5 @@ class AdviserBase:
                     pass
         return {"raw_text": text}
 
-    def ask_text(self, prompt: str, temperature=0.3, max_tokens: int = None):
+    def ask_text(self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None):
         return self._chat(prompt, temperature, max_tokens)
