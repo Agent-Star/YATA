@@ -1,6 +1,6 @@
 # adviser_main.py
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .adviser_aggregate import run_aggregate
 from .adviser_base import AdviserBase
@@ -25,10 +25,18 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
             continue
         if k == "task_type":
             old_type = old.get("task_type", "")
-            if v.lower() == "other" and old_type:
-                # 忽略无意义的覆盖
+            new_type = v.lower() if isinstance(v, str) else str(v).lower()
+            # 如果旧的有明确的 task_type，新的如果是 "other" 或空，则保留旧的
+            if (
+                old_type
+                and old_type != "other"
+                and (new_type == "other" or not new_type or new_type == "")
+            ):
+                # 保留旧的 task_type
                 continue
-            out[k] = v
+            # 如果新的有明确的 task_type，则使用新的
+            if new_type and new_type != "other":
+                out[k] = v
             continue
         if k == "dest_pref":
             prev = out.get(k) or []
@@ -58,19 +66,30 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class Adviser:
-    def __init__(self, model_name="gpt35"):
+    def __init__(self, model_name="gpt4o"):
         self.llm = AdviserBase(model_name)
         self.memory: Dict[str, Any] = {}
         self.clarifier = Clarifier()
 
     def generate_response(
-        self, user_input, use_rag=True, rag_top_k=5, debug=False, skip_clarifier=False
+        self,
+        user_input,
+        conversation_history: Optional[list] = None,
+        use_rag=True,
+        rag_top_k=5,
+        debug=False,
+        skip_clarifier=False,
     ):
+        """
+        参数:
+            conversation_history: 历史对话列表，格式为 [{"user": "用户输入", "response": {...}}, ...]
+        """
         t0 = time.time()
-        # result = run_intent_parsing(self.llm, user_input, debug)
 
         # 1) parse intent for current user input
-        result = run_intent_parsing(self.llm, user_input, debug) or {}
+        result = (
+            run_intent_parsing(self.llm, user_input, conversation_history, debug) or {}
+        )
         intent_cur = result.get("intent_parsed", {})
 
         # 2️⃣ 合并历史上下文
@@ -91,7 +110,6 @@ class Adviser:
         else:
             # 跳过 Clarifier，直接用上次记忆
             result["intent_parsed"] = self.memory
-            # Clarifier 前先合并旧意图（但不更新 memory
 
         task_type = result["intent_parsed"].get("task_type", "itinerary")
 
@@ -126,7 +144,7 @@ class Adviser:
             keywords = result.get("query_rewrite", {}).get("keywords", [])
 
             if task_type == "itinerary":
-                query_text = f"{city} attractions rest¥ants hotels travel guide"
+                query_text = f"{city} attractions restrants hotels travel guide"
             elif task_type == "recommendation":
                 category = subtype or (tags[0] if tags else "attractions")
                 query_text = f"{city} {category} recommendations"

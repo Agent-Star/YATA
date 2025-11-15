@@ -75,10 +75,14 @@ async def nlu_simple_api(request: NLURequest):
     if not nlu:
         raise HTTPException(status_code=500, detail="NLU 模块未初始化")
 
+    # 使用 session_id（后端传过来的 thread_id）
+    # 如果没有提供，自动生成一个（用于测试，生产环境建议后端总是提供）
     sid = request.session_id or str(uuid4())
+
+    # 如果会话不存在，创建新的 NLU 实例，使用 session_id 作为日志文件夹名
     if sid not in SESSIONS:
-        SESSIONS[sid] = NLU(with_verifier=True)
-        print(f"创建新会话: {sid}")
+        SESSIONS[sid] = NLU(log_folder="log", file_name=sid, with_verifier=True)
+        print(f"创建新会话: {sid} (thread_id)")
 
     session_nlu = SESSIONS[sid]
 

@@ -2,12 +2,12 @@
 import json
 import re
 
-from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
+from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt_client
 
 
 class Verifier:
     def __init__(self):
-        self.client = gpt35
+        self.client = gpt_client
         self.model = GPT_MODEL_NAME
         print(f"✅ Verifier initialized with Azure model: {self.model}")
 
@@ -28,9 +28,10 @@ class Verifier:
             temperature=0.0,  # 保持输出稳定一致
         )
 
-        text = response.choices[0].message.content
-        if not text:
-            return {"raw_text": None}
+        if content := response.choices[0].message.content:
+            text = content.strip()
+        else:
+            text = ""
 
         # 自动解析 JSON 格式
         try:

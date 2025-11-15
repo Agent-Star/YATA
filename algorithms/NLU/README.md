@@ -23,7 +23,7 @@
     - `agent_personas.py`：多智能体角色设定  
     - `parse_utils.py`：通用解析工具函数  
   - `log/` —— 运行日志目录  
-  - `initial.py`：系统初始化入口
+  - `initial.py`：系统初始化入口  
   - `main.py`：NLU 模块主入口
 
 ## 功能特性
@@ -41,49 +41,11 @@
 - Python 3.8+
 - 已安装项目依赖（NLU_module、RAG_chroma 等模块）
 
-### 安装依赖
-
-先安装 `uv` 包管理器:
-
-- linux / macos
-
-  ```bash
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  ```
-
-- windows
-
-  ```powershell
-  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-  ```
-
-然后配置依赖:
-
-```bash
-uv sync
-```
-
-最后加载虚拟环境:
-
-- linux / macos
-
-  ```bash
-  uv venv
-  source .venv/bin/activate
-  ```
-
-- windows
-
-  ```powershell
-  uv venv
-  ./.venv/Scripts/activate
-  ```
-
 ### 启动服务器
 
 ```bash
 cd api
-uv run fastapi_server.py
+python fastapi_server.py
 ```
 
 服务器将在默认端口 **8010** 启动（可通过环境变量 `NLU_API_PORT` 修改）。

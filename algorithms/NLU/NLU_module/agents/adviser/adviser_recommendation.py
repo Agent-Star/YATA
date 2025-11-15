@@ -150,14 +150,17 @@ def generate_recommendations(adviser, intent_result, rag_results=None, debug=Fal
     要求：
     - 每个景点单独成段，长度约 4~6 句；
     - 语气自然、有代入感，像人写的旅游攻略；
-    - 要整合 “交通方式”“时间建议”“小贴士” 等；
+    - 要整合 "交通方式""时间建议""小贴士" 等；
     - 不要用项目符号，不要编号；
     - 最后写一个总结段，鼓励游客体验当地文化。
 
     推荐项目清单：
     {items_text}
     """
-        natural_summary = adviser.ask_text(summary_prompt, temperature=0.7)
+        # 使用较大的 max_tokens 以确保推荐摘要完整（通常需要4000-6000 tokens）
+        natural_summary = adviser.ask_text(
+            summary_prompt, temperature=0.7, max_tokens=6000
+        )
         out["natural_summary"] = natural_summary.strip()
 
     return out

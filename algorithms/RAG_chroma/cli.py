@@ -52,7 +52,7 @@ def main():
     city: Optional[str] = args.city or data.get("city")
     # prefer explicit top_k arg over payload top_k
     top_k: Optional[int] = args.top_k or data.get("top_k")
-    # optional day preference from payload 
+    # optional day preference from payload
     day: Optional[str] = args.day or data.get("day")
 
     # 使用当前模型的向量维度初始化数据库表结构

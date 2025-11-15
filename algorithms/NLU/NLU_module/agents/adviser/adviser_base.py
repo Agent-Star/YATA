@@ -4,15 +4,15 @@ import re
 from typing import Optional
 
 import torch
-from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
+from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt_client
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class AdviserBase:
-    def __init__(self, model_name="gpt35"):
+    def __init__(self, model_name="gpt4o"):
         self.name = model_name.lower()
-        if self.name == "gpt35":
-            self.client = gpt35
+        if self.name.startswith("gpt"):
+            self.client = gpt_client
             self.model = GPT_MODEL_NAME
             print(f"Adviser initialized with Azure model: {self.model}")
         elif self.name == "deepseek":
@@ -30,8 +30,13 @@ class AdviserBase:
         else:
             raise ValueError("Unsupported model name")
 
-    def _chat(self, prompt: str, temperature: float = 0.3):
+    def _chat(
+        self, prompt: str, temperature: float = 0.3, max_tokens: Optional[int] = None
+    ):
         if self.name == "gpt35":
+            # 默认 max_tokens，对于长文本生成（如行程）使用更大的值
+            if max_tokens is None:
+                max_tokens = 4000
             resp = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -42,29 +47,36 @@ class AdviserBase:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=temperature,
-                max_tokens=4000,
+                max_tokens=max_tokens,
             )
             if content := resp.choices[0].message.content:
                 return content.strip()
             else:
-                return None
+                return ""
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
         if torch.cuda.is_available():
             inputs = {k: v.to("cuda") for k, v in inputs.items()}
-        outputs = self.hf_model.generate(**inputs, max_new_tokens=1500)
+        # 对于本地模型，如果指定了max_tokens，转换为max_new_tokens
+        max_new_tokens = max_tokens if max_tokens else 1500
+        outputs = self.hf_model.generate(**inputs, max_new_tokens=max_new_tokens)
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    def ask_json(self, prompt: str, schema_hint: Optional[str] = None, temperature=0.2):
+    def ask_json(
+        self,
+        prompt: str,
+        schema_hint: Optional[str] = None,
+        temperature=0.2,
+        max_tokens: Optional[int] = None,
+    ):
         guard = (
             f"\nFollow this JSON schema strictly:\n{schema_hint}\n"
             if schema_hint
             else ""
         )
-        text = self._chat("Return ONLY valid JSON.\n" + guard + prompt, temperature)
-        if not text:
-            return {"raw_text": None}
-
+        text = self._chat(
+            "Return ONLY valid JSON.\n" + guard + prompt, temperature, max_tokens
+        )
         try:
             return json.loads(text)
         except Exception:
@@ -76,5 +88,5 @@ class AdviserBase:
                     pass
         return {"raw_text": text}
 
-    def ask_text(self, prompt: str, temperature=0.3):
-        return self._chat(prompt, temperature)
+    def ask_text(self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None):
+        return self._chat(prompt, temperature, max_tokens)

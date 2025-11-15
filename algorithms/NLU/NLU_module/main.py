@@ -2,11 +2,8 @@
 import json
 import os
 
-# from NLU_module.agents.adviser import Adviser
 from NLU_module.agents.adviser.adviser_main import Adviser
 from NLU_module.agents.verifier import Verifier
-
-# from NLU_module.source.model_definition import *
 
 
 class NLU:
@@ -14,9 +11,10 @@ class NLU:
         self.path = f"NLU_module/{log_folder}/{file_name}"
         self.history = []
         self.with_verifier = with_verifier
+        self.session_id = file_name  # 保存 session_id 用于日志
 
         # 初始化模型
-        self.adviser = Adviser(model_name="gpt35")  # 或 'deepseek'
+        self.adviser = Adviser(model_name="gpt4o")  # 或 'deepseek'
         if self.with_verifier:
             self.verifier = Verifier()  # GPT-4o
 
@@ -25,29 +23,53 @@ class NLU:
         self.log_path = f"{self.path}/log.txt"
         self.history_path = f"{self.path}/history.txt"
 
-        # 清空历史文件
-        open(self.log_path, "w").close()
-        open(self.history_path, "w").close()
+        # 如果文件不存在则创建，存在则追加（不清空，保留历史）
+        if not os.path.exists(self.log_path):
+            open(self.log_path, "w").close()
+        if not os.path.exists(self.history_path):
+            open(self.history_path, "w").close()
 
         self.init = True
 
     def run(self, contents, context=None):
         user_input = contents
-        context = context or {}
 
         print("________________________________________")
         print(f"🧠 User Input: {user_input}")
+
+        # 准备历史对话上下文（只包含用户输入和响应，不包含内部结构）
+        conversation_history = []
+        if self.history:
+            for h in self.history:
+                conv_turn = {
+                    "user": h.get("user", ""),
+                    "response": {
+                        "intent_parsed": h.get("response", {}).get("intent_parsed", {})
+                    },
+                }
+                conversation_history.append(conv_turn)
 
         # 第一次调用 Adviser
         if self.init:
             response = self.adviser.generate_response(
                 user_input,
+                conversation_history=conversation_history,
                 use_rag=True,
                 rag_top_k=25,
-                debug=True if self.init else False,
+                debug=True,
                 skip_clarifier=False,
             )
-
+            self.init = False
+        else:
+            # 非首次：正常调用，关掉 debug，但传递历史对话
+            response = self.adviser.generate_response(
+                user_input,
+                conversation_history=conversation_history,
+                use_rag=False,
+                rag_top_k=25,
+                debug=False,
+                skip_clarifier=False,
+            )
         # 保存 Adviser 输出
         with open(self.log_path, "a+", encoding="utf-8") as f:
             f.write(
@@ -91,8 +113,25 @@ class NLU:
 {explanation}
 
 请保持原始请求的意图（task_type、目的地、天数、预算等），只修正检测到的问题。"""
+                # 重新生成时也传递历史对话
+                conversation_history = []
+                if self.history:
+                    for h in self.history:
+                        conv_turn = {
+                            "user": h.get("user", ""),
+                            "response": {
+                                "intent_parsed": h.get("response", {}).get(
+                                    "intent_parsed", {}
+                                )
+                            },
+                        }
+                        conversation_history.append(conv_turn)
                 response = self.adviser.generate_response(
-                    revision_prompt, use_rag=True, rag_top_k=25, debug=False
+                    revision_prompt,
+                    conversation_history=conversation_history,
+                    use_rag=True,
+                    rag_top_k=25,
+                    debug=False,
                 )
                 explanation, is_safe = self.verifier.assess_cur_response(response)
 

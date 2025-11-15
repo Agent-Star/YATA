@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 def init_generate_answer(user_input, context):
-    f"""
+    return f"""
 You are an intelligent travel planning assistant.
 Please help the user design a clear and structured trip plan based on their request and the contextual information provided below.
 
@@ -15,7 +15,7 @@ Output should be in JSON format with fields such as origin, destination, dates, 
 
 # 正常对话阶段（带历史上下文）
 def generate_answer(user_input, context, history):
-    f"""
+    return f"""
 You are continuing a conversation with a traveler.
 Please refine or update the travel plan based on the user's latest input, previous discussion, and available context.
 
@@ -31,7 +31,7 @@ Your output should remain structured (JSON) and clearly indicate any updates or 
 
 # 安全修正阶段（当 Verifier 检测到逻辑或安全问题时使用）
 def make_adjustment(last_response, history, suggestion):
-    f"""
+    return f"""
 You are revising your previous travel plan because the Verifier detected some issues.
 Please fix your previous answer to address the safety or logic concerns mentioned below.
 
@@ -47,7 +47,7 @@ Revised output should still be a structured travel plan (JSON format) and correc
 
 # Verifier 的检查提示模板
 def check_cur_response(suggestion):
-    f"""
+    return f"""
 You are a travel plan auditor.
 Evaluate the travel plan shown after "adviser_suggestion" and determine if it is logical, consistent, and realistic.
 
