@@ -33,7 +33,7 @@ class AdviserBase:
     def _chat(
         self, prompt: str, temperature: float = 0.3, max_tokens: Optional[int] = None
     ):
-        if self.name == "gpt35":
+        if self.name.startswith("gpt"):
             # 默认 max_tokens，对于长文本生成（如行程）使用更大的值
             if max_tokens is None:
                 max_tokens = 4000
