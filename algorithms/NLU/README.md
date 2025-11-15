@@ -6,13 +6,11 @@
 
 核心目录说明：
 
-- `api/`
-  - `fastapi_server.py` —— FastAPI 主服务入口
 - `NLU_module/`
   - `agents/adviser/` —— 多 Agent 智能体逻辑模块  
     - `adviser_intent.py`：意图识别  
     - `adviser_itinerary.py`：行程规划生成  
-    - `adviser_recommendation.py`：景点/活动推荐  
+    - `adviser_recommendation.py`：景点/活动推荐
     - `adviser_rag.py`：RAG 检索增强模块  
     - `clarifier.py`：信息补全与追问逻辑  
     - `verifier.py`：逻辑验证与一致性检查  
@@ -25,6 +23,7 @@
   - `log/` —— 运行日志目录  
   - `initial.py`：系统初始化入口  
   - `main.py`：NLU 模块主入口
+- `fastapi_server.py` —— FastAPI 主服务入口
 
 ## 功能特性
 
@@ -77,7 +76,6 @@ uv sync
 ### 启动服务器
 
 ```bash
-cd api
 python fastapi_server.py
 ```
 
@@ -86,7 +84,7 @@ python fastapi_server.py
 或者使用 uvicorn 启动：
 
 ```bash
-uvicorn api.fastapi_server:app --host 0.0.0.0 --port 8010
+uvicorn fastapi_server:app --host 0.0.0.0 --port 8010
 ```
 
 ### 验证服务
