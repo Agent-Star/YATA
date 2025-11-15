@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-init_generate_answer = (
-    lambda user_input, context: f"""
+def init_generate_answer(user_input, context):
+    return f"""
 You are an intelligent travel planning assistant.
 Please help the user design a clear and structured trip plan based on their request and the contextual information provided below.
 
@@ -11,11 +11,11 @@ Context: {context}
 
 Output should be in JSON format with fields such as origin, destination, dates, budget, and suggested itinerary.
 """
-)
+
 
 # 正常对话阶段（带历史上下文）
-generate_answer = (
-    lambda user_input, context, history: f"""
+def generate_answer(user_input, context, history):
+    return f"""
 You are continuing a conversation with a traveler.
 Please refine or update the travel plan based on the user's latest input, previous discussion, and available context.
 
@@ -27,11 +27,11 @@ History: {history}
 
 Your output should remain structured (JSON) and clearly indicate any updates or new recommendations.
 """
-)
+
 
 # 安全修正阶段（当 Verifier 检测到逻辑或安全问题时使用）
-make_adjustment = (
-    lambda last_response, history, suggestion: f"""
+def make_adjustment(last_response, history, suggestion):
+    return f"""
 You are revising your previous travel plan because the Verifier detected some issues.
 Please fix your previous answer to address the safety or logic concerns mentioned below.
 
@@ -43,11 +43,11 @@ History: {history}
 
 Revised output should still be a structured travel plan (JSON format) and correct the identified problems.
 """
-)
+
 
 # Verifier 的检查提示模板
-check_cur_response = (
-    lambda suggestion: f"""
+def check_cur_response(suggestion):
+    return f"""
 You are a travel plan auditor.
 Evaluate the travel plan shown after "adviser_suggestion" and determine if it is logical, consistent, and realistic.
 
@@ -60,7 +60,7 @@ Answer the following questions:
 adviser_suggestion: {suggestion}
 ---
 """
-)
+
 
 # Verifier 输出格式模板（强制要求 YAML 格式）
 yaml_correct_answer = """

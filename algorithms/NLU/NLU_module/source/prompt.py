@@ -8,6 +8,7 @@ Original file is located at
 """
 
 from datetime import datetime
+from typing import Optional
 
 # 文件封装了"旅行规划智能体"所需的七个 Prompt 模板
 # 模块总览:
@@ -24,7 +25,9 @@ from datetime import datetime
 # ----------------------------------------------------------
 
 
-def prompt_parse_intent(user_input: str, conversation_history: list = None) -> str:
+def prompt_parse_intent(
+    user_input: str, conversation_history: Optional[list] = None
+) -> str:
     """
     功能: 解析用户输入，提取任务类型与旅行意图槽位信息
     输出字段:
@@ -127,7 +130,7 @@ def prompt_parse_intent(user_input: str, conversation_history: list = None) -> s
 # ----------------------------------------------------------
 
 
-def prompt_normalize_date(user_input: str, today: str = None) -> str:
+def prompt_normalize_date(user_input: str, today: Optional[str] = None) -> str:
     """
     功能: 将模糊日期描述（如"国庆""下个月初"）转换为具体时间段。
     """
@@ -157,7 +160,7 @@ def prompt_normalize_date(user_input: str, today: str = None) -> str:
 # ----------------------------------------------------------
 
 
-def prompt_clarify(missing_slots: list, known_info: dict = None) -> str:
+def prompt_clarify(missing_slots: list, known_info: Optional[dict] = None) -> str:
     """
     功能: 根据缺失槽位生成追问语句，用于引导用户补充信息。
     """
@@ -178,7 +181,7 @@ def prompt_clarify(missing_slots: list, known_info: dict = None) -> str:
     """
 
 
-def prompt_clarify1(missing_slots: list, known_info: dict = None) -> str:
+def prompt_clarify1(missing_slots: list, known_info: Optional[dict] = None) -> str:
     """
     功能: 根据缺失槽位生成自然追问，引导用户补充关键信息。
     """
@@ -208,7 +211,7 @@ def prompt_clarify1(missing_slots: list, known_info: dict = None) -> str:
 # ----------------------------------------------------------
 
 
-def prompt_query_rewrite(user_input: str, slots: dict = None) -> str:
+def prompt_query_rewrite(user_input: str, slots: Optional[dict] = None) -> str:
     """
     功能: 将模糊自然语言问题改写为结构化检索 Query，便于 RAG 调用。
     """
@@ -296,7 +299,7 @@ def prompt_plan_actions(slots: dict) -> str:
 # ----------------------------------------------------------
 
 
-def prompt_aggregate(candidates: list, user_prefs: dict = None) -> str:
+def prompt_aggregate(candidates: list, user_prefs: Optional[dict] = None) -> str:
     """
     功能: 比较多个候选旅行方案，输出最优推荐。
     """

@@ -73,12 +73,12 @@ class AdviserBase:
         )
         try:
             return json.loads(text)
-        except:
+        except Exception:
             match = re.search(r"\{[\s\S]*\}", text)
             if match:
                 try:
                     return json.loads(match.group(0))
-                except:
+                except Exception:
                     pass
         return {"raw_text": text}
 

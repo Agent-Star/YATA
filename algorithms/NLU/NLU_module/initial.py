@@ -29,7 +29,7 @@ def main():
 
         print("正在思考，请稍候...\n")
         try:
-            response = nlu.run(user_input)
+            _response = nlu.run(user_input)
         except Exception as e:
             print(f"出错啦: {e}")
 
