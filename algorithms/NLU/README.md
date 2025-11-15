@@ -10,7 +10,7 @@
   - `agents/adviser/` —— 多 Agent 智能体逻辑模块  
     - `adviser_intent.py`：意图识别  
     - `adviser_itinerary.py`：行程规划生成  
-    - `adviser_recommendation.py`：景点/活动推荐  
+    - `adviser_recommendation.py`：景点/活动推荐
     - `adviser_rag.py`：RAG 检索增强模块  
     - `clarifier.py`：信息补全与追问逻辑  
     - `verifier.py`：逻辑验证与一致性检查  
