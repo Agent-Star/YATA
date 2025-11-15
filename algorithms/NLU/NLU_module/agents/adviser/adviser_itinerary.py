@@ -3,7 +3,6 @@
 # -*- coding: utf-8 -*-
 import json
 
-
 def generate_itinerary(adviser, result, rag_results, debug=False):
     # 从意图里抓一些上下文（城市、日期等）
     intent = result.get("intent_parsed", {}) if isinstance(result, dict) else {}
@@ -56,11 +55,11 @@ def generate_itinerary(adviser, result, rag_results, debug=False):
     - 日期区间（如有）：{start_date or "未给出"} ~ {end_date or "未给出"}
 
     ## 写作要求（务必遵守）
-    1) **按 Day 1 / Day 2 / Day 3 / Day 4 / Day 5...** 组织，每天**从 06:30 到 22:00** 给出连续时间轴（至少 8~10 个时间点），建议：06:30/08:00/09:30/11:00/12:30/14:00/15:30/17:00/18:30/20:00/21:30。
-    2) 每个时间点必须包含：**活动名称、地点、交通方式（地铁/步行/巴士/火车/游船等）、人均预算（€）、推荐餐饮、Tips（安全/文化/天气/礼仪）、“背景小知识/故事”**（1~2 句）。
-    3) 交通写清楚**典型路线/地铁线编号**；用“→”表示换乘或步行衔接。
-    4) **用现实可行的时长安排**（避免“半天逛完卢浮宫”这类不合理分配）。
-    5) 结合以下**票价/开放时间/省钱攻略**尽量引用（如无数据则写“以官网为准”）：
+    1) **按 Day 1 / Day 2 / Day 3 / Day 4 / Day 5...** 组织，每天**从 06:30 到 22:00** 给出连续时间轴（至少 4-5 个时间点），建议：06:30/08:00/09:30/11:00/12:30/14:00/15:30/17:00/18:30/20:00/21:30。
+    2) 每个时间点必须包含：**活动名称、地点、交通方式（地铁/步行/巴士/火车/游船等）、人均预算（€）、推荐餐饮、Tips（安全/文化/天气/礼仪）、"背景小知识/故事"**（1~2 句）。
+    3) 交通写清楚**典型路线/地铁线编号**；用"→"表示换乘或步行衔接。
+    4) **用现实可行的时长安排**（避免"三个小时逛完卢浮宫"这类不合理分配）。
+    5) 结合以下**票价/开放时间/省钱攻略**尽量引用（如无数据则写"以官网为准"）：
     {extra_context}
     6) 若启用了 RAG，请**自然融合**检索的 1~2 条信息，不要生硬引用：  
     {json.dumps(rag_results[:2], ensure_ascii=False, indent=2)}
@@ -77,7 +76,8 @@ def generate_itinerary(adviser, result, rag_results, debug=False):
     只输出 Markdown 正文，不要再输出任何 JSON 或代码块围栏。 长度尽量达到约 1800~2500 字。
     """
     # 关键：用 ask_text 让模型输出纯 Markdown 长文
-    markdown = adviser.ask_text(itinerary_prompt, temperature=0.6)
+    # 使用更大的 max_tokens 以确保能生成完整的长行程（1800-2500字约需要8000-12000 tokens）
+    markdown = adviser.ask_text(itinerary_prompt, temperature=0.6, max_tokens=12000)
 
     if debug:
         print("• itinerary generated (markdown, long form).")

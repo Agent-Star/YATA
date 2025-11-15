@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import re
-
-from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
+from NLU_module.source.model_definition import gpt35, GPT_MODEL_NAME
 
 
 class Verifier:
@@ -29,8 +28,6 @@ class Verifier:
         )
 
         text = response.choices[0].message.content
-        if not text:
-            return {"raw_text": None}
 
         # 自动解析 JSON 格式
         try:

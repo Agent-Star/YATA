@@ -2,7 +2,6 @@
 # adviser_recommendation.py
 import json
 
-
 def generate_recommendations(adviser, intent_result, rag_results=None, debug=False):
     rag_results = rag_results or []
     intent = intent_result.get("intent_parsed", {})
@@ -22,6 +21,7 @@ def generate_recommendations(adviser, intent_result, rag_results=None, debug=Fal
             rec_type = "food"
         else:
             rec_type = "attraction"
+
 
     if rec_type == "hotel":
         prompt = f"""
@@ -134,30 +134,31 @@ def generate_recommendations(adviser, intent_result, rag_results=None, debug=Fal
 
     if isinstance(out, dict) and "items" in out:
         # 拼装推荐项目的详细文本
-        items_text = "\n".join(
-            [
-                f"{idx + 1}. 名称：{i.get('name', '')}；类别：{i.get('category', '')}；位置：{i.get('neighborhood', '')}；"
-                f"亮点：{', '.join(i.get('highlights', []))}；"
-                f"推荐时间：{i.get('best_time', '')}；建议停留：{i.get('est_duration', '')}；"
-                f"交通：{i.get('transport', '')}；门票：{i.get('ticket', '')}；预算：{i.get('budget_eur', '')}；"
-                f"贴士：{'; '.join(i.get('tips', [])) if i.get('tips') else ''}"
-                for idx, i in enumerate(out["items"][:8])
-            ]
-        )
+        items_text = "\n".join([
+            f"{idx+1}. 名称：{i.get('name', '')}；类别：{i.get('category', '')}；位置：{i.get('neighborhood', '')}；"
+            f"亮点：{', '.join(i.get('highlights', []))}；"
+            f"推荐时间：{i.get('best_time', '')}；建议停留：{i.get('est_duration', '')}；"
+            f"交通：{i.get('transport', '')}；门票：{i.get('ticket', '')}；预算：{i.get('budget_eur', '')}；"
+            f"贴士：{'; '.join(i.get('tips', [])) if i.get('tips') else ''}"
+            for idx, i in enumerate(out["items"][:8])
+        ])
 
         summary_prompt = f"""
     你是一名资深旅行顾问，请根据以下景点与信息撰写一篇详细的中文旅行推荐说明。
     要求：
     - 每个景点单独成段，长度约 4~6 句；
     - 语气自然、有代入感，像人写的旅游攻略；
-    - 要整合 “交通方式”“时间建议”“小贴士” 等；
+    - 要整合 "交通方式""时间建议""小贴士" 等；
     - 不要用项目符号，不要编号；
     - 最后写一个总结段，鼓励游客体验当地文化。
 
     推荐项目清单：
     {items_text}
     """
-        natural_summary = adviser.ask_text(summary_prompt, temperature=0.7)
+        # 使用较大的 max_tokens 以确保推荐摘要完整（通常需要4000-6000 tokens）
+        natural_summary = adviser.ask_text(summary_prompt, temperature=0.7, max_tokens=6000)
         out["natural_summary"] = natural_summary.strip()
+
+
 
     return out
