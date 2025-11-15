@@ -1,6 +1,6 @@
-# Systemd Service 配置文件说明
+# Backend Systemd Service 配置文件说明
 
-本目录包含 YATA 项目的 systemd 服务配置文件。
+本目录包含 YATA backend 项目的 systemd 服务配置文件。
 
 ## 文件列表
 
