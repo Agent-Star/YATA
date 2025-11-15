@@ -32,7 +32,10 @@ def _expand_query(query: str) -> str:
 
 
 def search(
-    query: str, city: Optional[str] = None, day: Optional[str] = None, top_k: Optional[int] = None
+    query: str,
+    city: Optional[str] = None,
+    day: Optional[str] = None,
+    top_k: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     if not query or not query.strip():
         return []
