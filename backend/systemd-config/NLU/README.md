@@ -16,7 +16,7 @@ NLU 服务提供自然语言理解、意图识别和推荐/行程生成功能，
 
 - **默认端口**: 8010（可通过环境变量 `NLU_API_PORT` 修改）
 - **工作目录**: `algorithms/NLU/`
-- **启动脚本**: `api/fastapi_server.py`
+- **启动脚本**: `fastapi_server.py`
 - **虚拟环境**: `.venv`
 
 ## 快速开始
@@ -105,7 +105,7 @@ curl -X POST "http://localhost:8010/nlu/simple" \
 
 1. 确认 `algorithms/NLU/` 目录存在且路径正确
 2. 确认虚拟环境 `.venv` 已创建
-3. 确认 `api/fastapi_server.py` 文件存在
+3. 确认 `fastapi_server.py` 文件存在
 4. 查看详细日志：`journalctl --user -u yata-nlu.service -n 50`
 
 ### Q: 服务启动但无法访问？
