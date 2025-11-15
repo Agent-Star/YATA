@@ -8,7 +8,7 @@ Type=simple
 WorkingDirectory=%h/YATA/algorithms/NLU
 Environment="PATH=%h/YATA/algorithms/NLU/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NLU_API_PORT=8010"
-ExecStart=%h/YATA/algorithms/NLU/.venv/bin/python api/fastapi_server.py
+ExecStart=%h/YATA/algorithms/NLU/.venv/bin/python fastapi_server.py
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
