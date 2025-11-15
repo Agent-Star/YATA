@@ -7,7 +7,6 @@ __pycache__/
 
 # ChromaDB 数据库
 chroma_db/
-
 # vscode configuration
 .vscode/
 .DS_Store/
@@ -18,6 +17,3 @@ proposal/
 
 # claude code
 .claude/
-
-# temp
-temp/
