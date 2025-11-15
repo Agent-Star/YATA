@@ -14,7 +14,7 @@ class NLU:
         self.session_id = file_name  # 保存 session_id 用于日志
 
         # 初始化模型
-        self.adviser = Adviser(model_name="gpt35")  # 或 'deepseek'
+        self.adviser = Adviser(model_name="gpt4o")  # 或 'deepseek'
         if self.with_verifier:
             self.verifier = Verifier()  # GPT-4o
 

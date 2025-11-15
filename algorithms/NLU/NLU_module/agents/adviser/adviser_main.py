@@ -66,7 +66,7 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class Adviser:
-    def __init__(self, model_name="gpt35"):
+    def __init__(self, model_name="gpt4o"):
         self.llm = AdviserBase(model_name)
         self.memory: Dict[str, Any] = {}
         self.clarifier = Clarifier()

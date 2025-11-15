@@ -4,15 +4,15 @@ import re
 from typing import Optional
 
 import torch
-from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
+from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt_client
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class AdviserBase:
-    def __init__(self, model_name="gpt35"):
+    def __init__(self, model_name="gpt4o"):
         self.name = model_name.lower()
-        if self.name == "gpt35":
-            self.client = gpt35
+        if self.name.startswith("gpt"):
+            self.client = gpt_client
             self.model = GPT_MODEL_NAME
             print(f"Adviser initialized with Azure model: {self.model}")
         elif self.name == "deepseek":

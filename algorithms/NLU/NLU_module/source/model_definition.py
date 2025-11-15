@@ -7,7 +7,7 @@ MODEL_NAME = "gpt-4o-mini"
 deployment = "gpt-4o-mini"
 api_version = "2024-12-01-preview"
 
-gpt35 = AzureOpenAI(
+gpt_client = AzureOpenAI(
     api_version=api_version,
     azure_endpoint=endpoint,
     api_key=subscription_key,

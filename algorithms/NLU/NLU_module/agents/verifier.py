@@ -2,12 +2,12 @@
 import json
 import re
 
-from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt35
+from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt_client
 
 
 class Verifier:
     def __init__(self):
-        self.client = gpt35
+        self.client = gpt_client
         self.model = GPT_MODEL_NAME
         print(f"✅ Verifier initialized with Azure model: {self.model}")
 
