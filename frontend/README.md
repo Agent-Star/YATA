@@ -2,7 +2,7 @@
 
 这是 YATA (Yet Another Travel Agent) 项目的前端部分，基于 Next.js 构建，提供 AI 旅行规划聊天体验、收藏管理、旅行统计以及灵感/指南等多场景页面。
 
-## 技术栈   
+## 技术栈
 
 - **Next.js**: React 框架，用于服务端渲染和静态站点生成
 - **Semi UI**: 字节跳动开源的企业级设计系统和 React 组件库
@@ -12,7 +12,7 @@
 
 ## 项目结构
 
-```
+```txt
 frontend/
 ├── components/       # 可复用组件
 │   ├── auth/         # 认证相关组件
@@ -46,7 +46,7 @@ frontend/
 
 前端默认通过 `NEXT_PUBLIC_API_BASE_URL` 调用后端。可在 `frontend/.env.*` 中配置，例如：
 
-```
+```txt
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
 ```
 
