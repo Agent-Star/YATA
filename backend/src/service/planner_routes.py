@@ -187,7 +187,12 @@ async def plan_stream(
     """
 
     async def generate_events() -> AsyncGenerator[str, None]:
-        """生成 SSE 事件流"""
+        """
+        生成 SSE 事件流
+
+        使用 stream_mode=["messages"] 实现逐 token 流式输出.
+        不使用 "updates" 模式以避免重复输出完整消息.
+        """
         try:
             # 获取用户的主 Thread ID
             thread_id = await get_or_create_main_thread(current_user, session)
@@ -211,9 +216,9 @@ async def plan_stream(
             # 生成消息 ID (用于最终返回)
             message_id = f"msg-{id(input_message)}"
 
-            # 流式调用 agent
+            # 流式调用 agent (只使用 messages 模式以避免重复输出)
             async for stream_event in agent.astream(
-                user_input, config=config, stream_mode=["updates", "messages"], subgraphs=True
+                user_input, config=config, stream_mode=["messages"], subgraphs=True
             ):
                 if not isinstance(stream_event, tuple):
                     continue
@@ -224,25 +229,9 @@ async def plan_stream(
                 else:
                     stream_mode, event = stream_event
 
-                # 处理 updates 事件
-                if stream_mode == "updates":
-                    for node, updates in event.items():
-                        if node == "__interrupt__":
-                            continue
-
-                        updates = updates or {}
-                        update_messages = updates.get("messages", [])
-
-                        # 过滤掉工具消息
-                        for msg in update_messages:
-                            if isinstance(msg, AIMessage) and msg.content:
-                                # 发送完整消息作为 token 事件
-                                content = str(msg.content)
-                                yield f"data: {json.dumps({'type': 'token', 'delta': content})}\n\n"
-
                 # 处理 messages 事件 (token 流)
                 if stream_mode == "messages":
-                    msg, metadata = event
+                    msg, _ = event
                     if isinstance(msg, AIMessageChunk):
                         content = remove_tool_calls(msg.content)
                         if content:
