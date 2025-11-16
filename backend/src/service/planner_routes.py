@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 # 创建路由器
 planner_router = APIRouter(prefix="/planner", tags=["planner"])
 
+# 是否在 history 中过滤 ToolMessage
+logger.info(f"Filter `ToolMessage` in History: {settings.FILTER_TOOL_MESSAGE_IN_HISTORY}")
 
 # === 数据模型 ===
 
@@ -126,6 +128,7 @@ def langchain_message_to_frontend(message: AnyMessage) -> FrontendMessage:
 async def get_history(
     current_user: Annotated[User, Depends(current_active_user)],
     session: AsyncSession = Depends(get_async_session),
+    filter_tool_message: bool = settings.FILTER_TOOL_MESSAGE_IN_HISTORY,
 ) -> HistoryResponse:
     """
     获取用户的历史对话记录
@@ -147,8 +150,16 @@ async def get_history(
         # 提取消息历史
         messages: list[AnyMessage] = state.values.get("messages", [])
 
+        # TODO: 权宜之计, 彻底解决还需后端进行 message 分类 + 前端提供支持
+        # filter_tool_message 为 True 时, 过滤掉 ToolMessage (不展示 snippet)
+        filtered_messages = (
+            [msg for msg in messages if not isinstance(msg, ToolMessage)]
+            if filter_tool_message
+            else messages
+        )
+
         # 转换为前端格式
-        frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
+        frontend_messages = [langchain_message_to_frontend(msg) for msg in filtered_messages]
 
         # 查询用户的所有收藏记录
         stmt = select(Favorite.message_id).where(Favorite.user_id == current_user.id)

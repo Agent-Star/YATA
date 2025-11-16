@@ -1,6 +1,6 @@
 from enum import StrEnum
 from json import loads
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -78,6 +78,12 @@ class Settings(BaseSettings):
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
     LOG_LEVEL: LogLevel = LogLevel.WARNING
 
+    # === 是否对 history 进行过滤 ToolMessage ===
+    FILTER_TOOL_MESSAGE_IN_HISTORY: bool = True
+
+    # === 默认 Agent 配置 ===
+    DEFAULT_AGENT: Literal["research-assistant", "travel-planner"] = "travel-planner"
+
     # === 认证配置 ===
     # 向后兼容的 Bearer Token 认证 (用于 API 密钥访问)
     AUTH_SECRET: SecretStr | None = None
@@ -127,7 +133,7 @@ class Settings(BaseSettings):
 
     # === NLU 服务配置 ===
     NLU_SERVICE_URL: str = "http://localhost:8010"
-    NLU_TIMEOUT: float = 5.0  # 原来的 30s 太阴间了, 直接给它先整个 5s, dev 环境测试有问题再改
+    NLU_TIMEOUT: float = 30.0  # 原来的 30s 太阴间了, 直接给它先整个 5s, dev 环境测试有问题再改
     NLU_MAX_RETRIES: int = 1
     ENABLE_NLU_FALLBACK: bool = True  # 是否启用兜底机制
 

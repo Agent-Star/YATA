@@ -41,7 +41,7 @@ class NLUClient:
     def __init__(
         self,
         base_url: str = "http://localhost:8010",
-        timeout: float = 5.0,
+        timeout: float = settings.NLU_TIMEOUT,
         max_retries: int = 1,
     ):
         """
