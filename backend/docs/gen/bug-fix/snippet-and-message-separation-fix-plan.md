@@ -56,6 +56,7 @@ async for stream_event in agent.astream(
 ```
 
 **关键问题**:
+
 - 只处理 `AIMessageChunk` 类型的消息
 - `ToolMessage` 被完全忽略, 不发送到前端
 - 多条 AIMessage 的内容会被连续发送, 没有分隔标记
@@ -68,6 +69,7 @@ frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
 ```
 
 **关键问题**:
+
 - 会转换所有消息, 包括 `ToolMessage`
 - `langchain_message_to_frontend` 函数 (line 75-119) 对于非 `HumanMessage` 和 `AIMessage` 的消息类型, 会默认设置 `role="assistant"`
 - 因此 `ToolMessage` 也被转换为 `role="assistant"` 的消息并返回给前端
@@ -75,6 +77,7 @@ frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
 ### 4. 前端 Stream 处理逻辑 (`frontend/lib/services/aiPlanner.js`)
 
 前端在接收 SSE stream 时, 只处理以下事件类型:
+
 - `token`: 追加到当前 assistant 消息的 content
 - `metadata`: 更新当前 assistant 消息的 metadata
 - `end`: 标记流结束
@@ -97,6 +100,7 @@ frontend_messages = [langchain_message_to_frontend(msg) for msg in messages]
 ### 方案 1: 简单修复 - 过滤 History 中的 ToolMessage (仅后端修改)
 
 #### 目标
+
 让 `GET /planner/history` 不返回 `ToolMessage`, 从而与 stream 行为保持一致.
 
 #### 实现步骤
@@ -165,16 +169,19 @@ async def get_history(
 ```
 
 #### 优点
+
 - **实现简单**: 只需修改一个函数, 添加一行过滤逻辑
 - **无需修改前端**: 前端代码完全不需要改动
 - **风险低**: 不涉及 stream 处理逻辑, 不会影响实时响应
 
 #### 缺点
+
 - **治标不治本**: 只是隐藏了 ToolMessage, 没有解决消息隔断问题
 - **用户体验一般**: snippet 信息完全丢失, 用户无法看到 AI 的搜索过程
 - **不够优雅**: 消息连续输出的问题仍然存在
 
 #### 适用场景
+
 - 快速修复, 短期内需要保持前后端一致性
 - 暂时不需要向用户展示工具调用的详细信息
 - 作为临时方案, 为方案 2 的实现争取时间
@@ -184,6 +191,7 @@ async def get_history(
 ### 方案 2: 完整修复 - 支持消息分隔和 Snippet 展示 (前后端协同修改)
 
 #### 目标
+
 1. 在 stream 过程中正确处理多条 AI 消息, 提供视觉上的分隔
 2. 可选地展示 ToolMessage (snippet), 让用户了解 AI 的搜索过程
 3. 保持 History 和 Stream 的一致性
@@ -531,16 +539,19 @@ const sendMessage = useCallback(
 可以在 `ChatHistory` 组件中添加特殊样式, 将 `role="tool"` 的消息以折叠或灰色文本的形式展示, 让用户知道这是 AI 的搜索过程.
 
 #### 优点
+
 - **用户体验优秀**: 消息分隔清晰, 可选地展示 snippet, 让用户了解 AI 的工作过程
 - **前后端一致**: History 和 Stream 都能正确展示完整的对话流程
 - **扩展性强**: 为未来支持更多工具类型 (如天气查询) 奠定基础
 
 #### 缺点
+
 - **实现复杂**: 需要同时修改后端和前端
 - **测试成本高**: 需要仔细测试消息边界检测逻辑, 避免出现重复或遗漏
 - **兼容性风险**: 需要确保新旧版本的 API 兼容
 
 #### 适用场景
+
 - 长期方案, 提升整体用户体验
 - 需要向用户透明展示 AI 的工作流程
 - 有时间和资源进行充分测试
@@ -565,14 +576,18 @@ const sendMessage = useCallback(
 ## 推荐实施策略
 
 ### 短期 (本次迭代)
+
 采用 **方案 1**, 快速修复 snippet 显示不一致的问题:
+
 1. 修改 `get_history` 函数, 过滤 `ToolMessage`
 2. 运行 pyright 检查, 确保无类型错误
 3. 手动测试 `GET /planner/history`, 确认 snippet 不再出现
 4. 部署到测试环境验证
 
 ### 中长期 (下次迭代)
+
 规划实施 **方案 2**, 提升整体用户体验:
+
 1. 先在 backend 实现 SSE 事件扩展和消息边界检测
 2. 编写单元测试, 确保消息 ID 跟踪逻辑正确
 3. 更新前端 API 层, 支持新事件类型
@@ -585,18 +600,21 @@ const sendMessage = useCallback(
 ## 相关文件清单
 
 ### 后端文件
+
 - `backend/src/service/planner_routes.py`: 路由实现, 包含 `get_history` 和 `plan_stream`
 - `backend/src/service/utils.py`: 消息转换工具函数
 - `backend/src/agents/research_assistant.py`: Research Assistant agent 实现
 - `backend/src/agents/travel_planner.py`: Travel Planner agent 实现
 
 ### 前端文件
+
 - `frontend/lib/services/aiPlanner.js`: SSE stream 处理逻辑
 - `frontend/lib/hooks/usePlanner.js`: 消息状态管理
 - `frontend/modules/chat/ChatPanel.js`: 聊天面板组件
 - `frontend/components/chat/ChatHistory.js`: 消息展示组件
 
 ### 文档文件
+
 - `backend/docs/api/前后端-接口文档.md`: 前后端接口约定
 - `backend/docs/bug-desc/history-dump.json`: 问题示例数据
 
@@ -619,13 +637,14 @@ from langchain_core.messages import (
 ### SSE 事件格式
 
 标准 SSE 格式:
+
 ```
 data: {"type": "token", "delta": "Hello"}\n\n
 data: {"type": "end", "messageId": "msg-123"}\n\n
 data: [DONE]\n\n
 ```
 
-每个事件以 `data: ` 开头, JSON 格式, 以双换行符 `\n\n` 结束.
+每个事件以 `data:` 开头, JSON 格式, 以双换行符 `\n\n` 结束.
 
 ### 前后端消息结构
 
