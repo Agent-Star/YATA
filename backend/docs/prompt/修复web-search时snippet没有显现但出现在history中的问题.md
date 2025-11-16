@@ -15,7 +15,7 @@
 
 首先先请你仔细阅读并深入理解当前后端 @backend/ 的架构和实现. 我发现, 如果说我的对话, 触发了 research-assistant 的 web-search 流程, 那么在调用 `GET /planner/history` (具体的前后端交互接口详见 @backend/docs/api/前后端-接口文档.md ) 时, 会显示出 `snippet` 对话记录 (详见 @backend/docs/bug-desc/history-dump.json ). 但我在通过前端调用 `POST /planner/plan/stream` 时这些 `snippet` 并不会显现, 而且像是 history-dump.json 中 "...并了解它们未来7天的天气预报。请稍等。" 和 "很抱歉，我无法直接从搜索结果中提取到热门温暖海滨城市未来7天的天气预报。..." 两条信息之间也不会分开显示, 而是在 `请稍等` 后过一小会, 直接继续渲染 `很抱歉`.
 
-为了更全面的了解问题的来龙去脉, 你可以 `git checkout` 到 `feat/frontend`, 在 frontend/ 目录下阅读并理解前端的实现.
+为了更全面的了解问题的来龙去脉, 你可以 `git checkout` 到 `feat/frontend`, 在 frontend/ 目录下深入阅读并理解前端的架构和实现.
 
 对 backend 和 frontend 的架构和实现有了深入的理解之后, 请你分析导致这个问题的原因是什么. 随后请你规划两种修复方案: 第一种, 能不能直接不让 `GET /planner/history` 显示 `snippet` (消息隔断不用在意, 这个是小问题); 第二种, backend 和 frontend 做出调整, 使得可以在 `POST /planner/plan/stream` 时就正确的处理像是 `消息隔断` 或是 `snippet` 这样的情况, 同时让 `GET /planner/history` 也能够返回顺序正确的完整对话. 其中, 第一种方案的修改不能涉及前端, 第二种方案的修改则在必要时可以涉及前端. 不过这两种方案的规划, 都应在当前的 `feat/backend` 分支上进行.
 
