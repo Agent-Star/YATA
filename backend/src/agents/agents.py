@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from langgraph.graph.state import CompiledStateGraph
@@ -13,10 +14,13 @@ from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hie
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
 from agents.travel_planner import travel_planner
+from core.settings import settings
 from schema import AgentInfo
 
-# DEFAULT_AGENT = "research-assistant"
-DEFAULT_AGENT = "travel-planner"  # NLU + RAG, 先验证兜底策略
+logger = logging.getLogger(__name__)
+
+DEFAULT_AGENT = settings.DEFAULT_AGENT
+logger.info(f"Default Agent: {DEFAULT_AGENT}")
 
 # Type alias to handle LangGraph's different agent patterns
 # - @entrypoint functions return Pregel

@@ -1,6 +1,6 @@
 from enum import StrEnum
 from json import loads
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     PORT: int = 8080
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
     LOG_LEVEL: LogLevel = LogLevel.WARNING
+
+    # === 默认 Agent 配置 ===
+    DEFAULT_AGENT: Literal["research-assistant", "travel-planner"] = "travel-planner"
 
     # === 认证配置 ===
     # 向后兼容的 Bearer Token 认证 (用于 API 密钥访问)
