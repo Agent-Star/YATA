@@ -196,7 +196,173 @@ curl http://localhost:8010/health
 - `status: "complete"`: 任务完成，返回完整的行程规划或推荐内容
 - `status: "incomplete"`: 需要更多信息，`reply` 字段包含追问内容
 
-### 3. 删除会话
+### 3. 流式 NLU 接口（推荐 - 实时体验）
+
+**POST** `/nlu/simple/stream`
+
+使用 SSE (Server-Sent Events) 逐 token 流式返回行程规划，用户可以边等待边看到生成过程。
+
+**请求体**：
+
+```json
+{
+    "text": "Plan a 4-day trip to Paris with museums and food experiences, budget 8000 yuan",
+    "session_id": "optional-session-id"
+}
+```
+
+**参数说明**：
+
+- `text` (必填): 用户输入的自然语言文本 (地点建议使用英文)
+- `session_id` (可选): 会话 ID。不提供时自动创建新会话
+
+**响应格式** (SSE 事件流)：
+
+流式接口返回一系列 SSE 事件，格式为 `data: {JSON}\n\n`。
+
+**事件类型**：
+
+1. **phase_start** - 阶段开始
+
+```json
+{"type": "phase_start", "phase": "intent_parsing"}
+{"type": "phase_start", "phase": "rag_search"}
+{"type": "phase_start", "phase": "content_generation"}
+{"type": "phase_start", "phase": "itinerary_generation"}
+```
+
+2. **phase_end** - 阶段完成
+
+```json
+{"type": "phase_end", "phase": "intent_parsing"}
+{"type": "phase_end", "phase": "rag_search", "result": {"count": 50}}
+{"type": "phase_end", "phase": "content_generation"}
+{"type": "phase_end", "phase": "itinerary_generation"}
+```
+
+3. **token** - 行程生成的文本片段 (逐 token 流式)
+
+```json
+{"type": "token", "delta": "#"}
+{"type": "token", "delta": " 4"}
+{"type": "token", "delta": "天"}
+{"type": "token", "delta": "巴黎"}
+{"type": "token", "delta": "行程"}
+```
+
+4. **end** - 处理完成
+
+```json
+{"type": "end", "session_id": "550e8400-e29b-41d4-a716-446655440000", "status": "complete"}
+```
+
+5. **error** - 错误
+
+```json
+{"type": "error", "message": "处理超时"}
+```
+
+6. **[DONE]** - 流式结束标记
+
+```
+data: [DONE]
+```
+
+**完整示例流程**：
+
+```
+data: {"type":"phase_start","phase":"intent_parsing"}
+data: {"type":"phase_end","phase":"intent_parsing"}
+data: {"type":"phase_start","phase":"rag_search"}
+data: {"type":"phase_end","phase":"rag_search","result":{"count":50}}
+data: {"type":"phase_start","phase":"content_generation"}
+data: {"type":"phase_end","phase":"content_generation"}
+data: {"type":"phase_start","phase":"itinerary_generation"}
+data: {"type":"token","delta":"#"}
+data: {"type":"token","delta":" "}
+data: {"type":"token","delta":"4"}
+data: {"type":"token","delta":"天"}
+data: {"type":"token","delta":"巴黎"}
+data: {"type":"token","delta":"行程"}
+...
+data: {"type":"phase_end","phase":"itinerary_generation"}
+data: {"type":"end","session_id":"550e8400-e29b-41d4-a716-446655440000","status":"complete"}
+data: [DONE]
+```
+
+**前端集成示例** (JavaScript):
+
+```javascript
+async function streamNLU(text, sessionId) {
+    const response = await fetch('http://localhost:8010/nlu/simple/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, session_id: sessionId })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';  // 保留未完成的行
+
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') return;
+
+                const event = JSON.parse(data);
+
+                switch (event.type) {
+                    case 'phase_start':
+                        console.log(`开始: ${event.phase}`);
+                        break;
+                    case 'token':
+                        // 逐 token 显示行程内容
+                        document.getElementById('itinerary').innerText += event.delta;
+                        break;
+                    case 'end':
+                        console.log('完成:', event.session_id);
+                        break;
+                    case 'error':
+                        console.error('错误:', event.message);
+                        break;
+                }
+            }
+        }
+    }
+}
+
+// 使用示例
+streamNLU('规划一个4天的巴黎行程，预算8000元');
+```
+
+**cURL 测试示例**:
+
+```bash
+# 使用 -N 参数禁用缓冲
+curl -N -X POST "http://localhost:8010/nlu/simple/stream" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "text": "Plan a 4-day trip to Paris, budget 8000 yuan"
+     }'
+```
+
+**优势**：
+
+- ✅ 实时反馈：用户边等待边看到生成进度
+- ✅ 更好的体验：避免长时间"黑屏等待"
+- ✅ 降低感知延迟：即使总时间相同，用户体验大幅提升
+- ✅ 易于调试：可以看到每个处理阶段的进度
+
+### 4. 删除会话
 
 **DELETE** `/nlu/session/{session_id}`
 

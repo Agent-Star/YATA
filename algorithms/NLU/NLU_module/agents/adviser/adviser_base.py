@@ -1,11 +1,15 @@
 # adviser_base.py
 import json
+import logging
 import re
+from collections.abc import AsyncGenerator
 from typing import Optional
 
 import torch
 from NLU_module.source.model_definition import GPT_MODEL_NAME, gpt_client
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+logger = logging.getLogger(__name__)
 
 
 class AdviserBase:
@@ -88,5 +92,63 @@ class AdviserBase:
                     pass
         return {"raw_text": text}
 
-    async def ask_text(self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None):
+    async def ask_text(
+        self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None
+    ):
         return await self._chat(prompt, temperature, max_tokens)
+
+    async def ask_text_stream(
+        self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None
+    ) -> AsyncGenerator[str, None]:
+        """
+        流式调用 LLM，逐 token 返回
+
+        参数:
+            prompt: 提示词
+            temperature: 温度参数
+            max_tokens: 最大 token 数
+
+        Yields:
+            str: 每次生成的文本 chunk
+        """
+        if self.name.startswith("gpt"):
+            # 默认 max_tokens
+            if max_tokens is None:
+                max_tokens = 4000
+
+            try:
+                logger.debug(f"开始流式调用 {self.model}, max_tokens={max_tokens}")
+
+                # 使用 Azure OpenAI 的流式 API
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a helpful travel assistant.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=True,  # 启用流式输出
+                )
+
+                # 逐 chunk 返回
+                async for chunk in response:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        delta = chunk.choices[0].delta.content
+                        yield delta
+
+                logger.debug("流式调用完成")
+
+            except Exception as e:
+                logger.error(f"流式 LLM 调用失败: {e}")
+                raise
+
+        else:
+            # DeepSeek 等本地模型暂不支持流式
+            # 退化为一次性返回
+            logger.warning(f"{self.name} 不支持流式输出，使用非流式 fallback")
+            full_text = await self._chat(prompt, temperature, max_tokens)
+            yield full_text

@@ -1,4 +1,6 @@
 # adviser_main.py
+import asyncio
+import logging
 import time
 from typing import Any
 
@@ -11,6 +13,8 @@ from .adviser_plan_actions import run_plan_actions
 from .adviser_rag import call_rag_api
 from .adviser_recommendation import generate_recommendations
 from .clarifier import Clarifier
+
+logger = logging.getLogger(__name__)
 
 
 # adviser_main.py
@@ -98,7 +102,8 @@ class Adviser:
 
         # 1) parse intent for current user input
         result = (
-            await run_intent_parsing(self.llm, user_input, conversation_history, debug) or {}
+            await run_intent_parsing(self.llm, user_input, conversation_history, debug)
+            or {}
         )
         intent_cur = result.get("intent_parsed", {})
 
@@ -180,13 +185,44 @@ class Adviser:
         else:
             doc_summaries, rag_results = ["No external context."], []
 
-        result["context_summary"] = await run_context_summary(
-            self.llm, user_input, doc_summaries
+        # 并发执行独立的 LLM 调用 (阶段 1 优化)
+        logger.info("开始并发执行 context_summary, plan_steps, final_aggregation")
+        t_concurrent_start = time.time()
+
+        context_task = run_context_summary(self.llm, user_input, doc_summaries)
+        plan_task = run_plan_actions(self.llm, result["intent_parsed"])
+        aggregate_task = run_aggregate(self.llm, [], result["intent_parsed"])
+
+        # 使用 asyncio.gather 并发等待，并处理可能的异常
+        results = await asyncio.gather(
+            context_task,
+            plan_task,
+            aggregate_task,
+            return_exceptions=True,  # 不会因为单个任务失败而全部失败
         )
-        result["plan_steps"] = await run_plan_actions(self.llm, result["intent_parsed"])
-        result["final_aggregation"] = await run_aggregate(
-            self.llm, [], result["intent_parsed"]
-        )
+
+        # 检查每个结果并处理异常
+        context_summary, plan_steps, final_aggregation = results
+
+        if isinstance(context_summary, Exception):
+            logger.error(f"context_summary 失败: {context_summary}")
+            context_summary = ""  # 使用默认值
+
+        if isinstance(plan_steps, Exception):
+            logger.error(f"plan_steps 失败: {plan_steps}")
+            plan_steps = []  # 使用默认值
+
+        if isinstance(final_aggregation, Exception):
+            logger.error(f"final_aggregation 失败: {final_aggregation}")
+            final_aggregation = ""  # 使用默认值
+
+        # 赋值到 result 字典
+        result["context_summary"] = context_summary
+        result["plan_steps"] = plan_steps
+        result["final_aggregation"] = final_aggregation
+
+        t_concurrent_elapsed = time.time() - t_concurrent_start
+        logger.info(f"并发执行完成，耗时: {t_concurrent_elapsed:.2f}s")
 
         # itinerary only if itinerary task
         if task_type == "itinerary":
