@@ -20,8 +20,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
-from agents.timestamp import create_timestamped_message
+from agents.timestamp import add_timestamp_to_message, create_timestamped_message
 from auth import User, current_active_user
+from external_services.nlu_client import get_nlu_client
 from auth.database import get_async_session
 from auth.models import Favorite
 from core import settings
@@ -202,15 +203,12 @@ async def plan_stream(
         """
         生成 SSE 事件流
 
-        使用 stream_mode=["messages"] 实现逐 token 流式输出.
-        不使用 "updates" 模式以避免重复输出完整消息.
+        直接调用 NLU 服务实现真正的逐 token 流式输出,
+        绕过 LangGraph 的 Functional API 限制.
         """
         try:
             # 获取用户的主 Thread ID
             thread_id = await get_or_create_main_thread(current_user, session)
-
-            # 获取 agent
-            agent: AgentGraph = get_agent(DEFAULT_AGENT)
 
             # 构建配置
             configurable: dict[str, Any] = {"thread_id": thread_id, "user_id": str(current_user.id)}
@@ -221,33 +219,45 @@ async def plan_stream(
 
             config = RunnableConfig(configurable=configurable)
 
-            # 构建输入 (带时间戳)
+            # 构建输入消息 (带时间戳)
             input_message = create_timestamped_message(request.prompt, HumanMessage)
-            user_input = {"messages": [input_message]}
-
-            # 生成消息 ID (用于最终返回)
             message_id = f"msg-{id(input_message)}"
 
-            # 流式调用 agent (只使用 messages 模式以避免重复输出)
-            async for stream_event in agent.astream(
-                user_input, config=config, stream_mode=["messages"], subgraphs=True
-            ):
-                if not isinstance(stream_event, tuple):
-                    continue
+            # ========== 直接调用 NLU，边接收边转发 ==========
+            full_content = ""
+            nlu_session_id = None
+            nlu_status = None
 
-                # 解析事件
-                if len(stream_event) == 3:
-                    _, stream_mode, event = stream_event
-                else:
-                    stream_mode, event = stream_event
+            async with get_nlu_client() as nlu_client:
+                async for event in nlu_client.call_nlu_stream(
+                    text=request.prompt,
+                    session_id=thread_id,
+                ):
+                    event_type = event.get("type")
 
-                # 处理 messages 事件 (token 流)
-                if stream_mode == "messages":
-                    msg, _ = event
-                    if isinstance(msg, AIMessageChunk):
-                        content = remove_tool_calls(msg.content)
-                        if content:
-                            yield f"data: {json.dumps({'type': 'token', 'delta': convert_message_content_to_string(content)})}\n\n"
+                    if event_type == "token":
+                        # ✅ 立即转发给前端
+                        delta = event.get("delta", "")
+                        full_content += delta
+                        yield f"data: {json.dumps({'type': 'token', 'delta': delta})}\n\n"
+
+                    elif event_type == "end":
+                        nlu_session_id = event.get("session_id")
+                        nlu_status = event.get("status")
+                        break
+
+            # ========== 保存完整历史到 checkpoint ==========
+
+            # 创建完整的 AIMessage
+            final_message = AIMessage(content=full_content)
+            final_message = add_timestamp_to_message(final_message)
+
+            # 使用 save-history-helper 保存历史（不会调用 NLU）
+            save_helper = get_agent("save-history-helper")
+            await save_helper.ainvoke(
+                {"messages": [input_message, final_message]},
+                config=config
+            )
 
             # 发送结束事件
             empty_dict = {}

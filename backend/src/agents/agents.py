@@ -13,7 +13,7 @@ from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
-from agents.travel_planner_functional import travel_planner, get_history_helper
+from agents.travel_planner_functional import travel_planner, get_history_helper, save_history_helper
 from core.settings import settings
 from schema import AgentInfo
 
@@ -49,6 +49,10 @@ agents: dict[str, Agent] = {
     "get-history-helper": Agent(
         description="Helper to retrieve full message history from checkpoint.",
         graph=get_history_helper,
+    ),
+    "save-history-helper": Agent(
+        description="Helper to save messages to checkpoint without processing.",
+        graph=save_history_helper,
     ),
     "command-agent": Agent(description="A command agent.", graph=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),
