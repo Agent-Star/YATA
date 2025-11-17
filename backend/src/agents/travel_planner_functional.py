@@ -207,16 +207,16 @@ async def travel_planner_functional(
                 f"TravelPlanner: Research-assistant returned {len(research_messages)} messages"
             )
 
-            # 过滤掉输入消息（research_assistant 会返回完整的 messages，包括输入）
-            # 我们只需要新生成的消息
-            new_messages = research_messages[len(input_messages) :]
+            # research_messages 可能包含：
+            # 1. 只有 AI 回复（Functional API 标准行为）
+            # 2. 用户输入 + AI 回复（某些实现）
+            # 为了避免重复保存用户输入，我们过滤掉 HumanMessage
+            ai_responses = [msg for msg in research_messages if not isinstance(msg, HumanMessage)]
 
             # 返回 research-assistant 的结果
-            # 注意：research-assistant 可能也返回 chunks，这里我们直接传递
-            # 如果 research-assistant 已经是完整消息，value 和 save 相同也没问题
             return entrypoint.final(
-                value={"messages": new_messages},
-                save={"messages": all_messages + new_messages},
+                value={"messages": ai_responses},
+                save={"messages": all_messages + ai_responses},
             )
 
         except Exception as fallback_error:
