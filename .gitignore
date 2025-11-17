@@ -24,3 +24,6 @@ frontend/node_modules/**
 
 # .next
 frontend/.next/**
+
+# cross-issues
+cross-issues/**
