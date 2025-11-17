@@ -2,16 +2,20 @@
 import json
 import os
 
+import aiofiles
 from NLU_module.agents.adviser.adviser_main import Adviser
 from NLU_module.agents.verifier import Verifier
 
 
 class NLU:
-    def __init__(self, log_folder="log", file_name="0", with_verifier=True):
+    def __init__(
+        self, log_folder="log", file_name="0", with_verifier=True, max_retries=3
+    ):
         self.path = f"NLU_module/{log_folder}/{file_name}"
         self.history = []
         self.with_verifier = with_verifier
         self.session_id = file_name  # 保存 session_id 用于日志
+        self.max_retries = max_retries  # Verifier 最大重试次数
 
         # 初始化模型
         self.adviser = Adviser(model_name="gpt4o")  # 或 'deepseek'
@@ -31,7 +35,7 @@ class NLU:
 
         self.init = True
 
-    def run(self, contents, context=None):
+    async def run(self, contents, context=None):
         user_input = contents
 
         print("________________________________________")
@@ -51,7 +55,7 @@ class NLU:
 
         # 第一次调用 Adviser
         if self.init:
-            response = self.adviser.generate_response(
+            response = await self.adviser.generate_response(
                 user_input,
                 conversation_history=conversation_history,
                 use_rag=True,
@@ -62,7 +66,7 @@ class NLU:
             self.init = False
         else:
             # 非首次：正常调用，关掉 debug，但传递历史对话
-            response = self.adviser.generate_response(
+            response = await self.adviser.generate_response(
                 user_input,
                 conversation_history=conversation_history,
                 use_rag=False,
@@ -71,11 +75,11 @@ class NLU:
                 skip_clarifier=False,
             )
         # 保存 Adviser 输出
-        with open(self.log_path, "a+", encoding="utf-8") as f:
-            f.write(
+        async with aiofiles.open(self.log_path, "a+", encoding="utf-8") as f:
+            await f.write(
                 f"\n----------------------- User -----------------------\n{user_input}\n"
             )
-            f.write(
+            await f.write(
                 f"----------------------- Adviser Response -----------------------\n{json.dumps(response, ensure_ascii=False, indent=2)}\n"
             )
 
@@ -86,9 +90,9 @@ class NLU:
             print(follow_up)
             # 记录历史
             self.history.append({"user": user_input, "response": response})
-            with open(self.history_path, "a+", encoding="utf-8") as f:
-                f.write(f"\n------------ User ------------\n{user_input}\n")
-                f.write(
+            async with aiofiles.open(self.history_path, "a+", encoding="utf-8") as f:
+                await f.write(f"\n------------ User ------------\n{user_input}\n")
+                await f.write(
                     f"------------ Response ------------\n{json.dumps(response, ensure_ascii=False, indent=2)}\n"
                 )
             print("\n****************************************")
@@ -97,16 +101,20 @@ class NLU:
         # 调用 Verifier 审查
         task_type = response.get("intent_parsed", {}).get("task_type", "")
         if self.with_verifier and task_type == "itinerary":
-            explanation, is_safe = self.verifier.assess_cur_response(response)
-            with open(self.log_path, "a+", encoding="utf-8") as f:
-                f.write(
+            explanation, is_safe = await self.verifier.assess_cur_response(response)
+            async with aiofiles.open(self.log_path, "a+", encoding="utf-8") as f:
+                await f.write(
                     "\n&&&&&&&&&&&&&&&&&&&&&&& Safety Check &&&&&&&&&&&&&&&&&&&&&&&\n"
                 )
-                f.write(f"Safety: {is_safe}\nExplanation: {explanation}\n")
+                await f.write(f"Safety: {is_safe}\nExplanation: {explanation}\n")
 
-            # 如果不安全，重新生成
-            while not is_safe:
-                print("⚠️ Verifier 检测到问题，正在重新生成...")
+            # 如果不安全，重新生成（带重试次数限制）
+            retry_count = 0
+            while not is_safe and retry_count < self.max_retries:
+                retry_count += 1
+                print(
+                    f"⚠️ Verifier 检测到问题，正在重新生成... (第 {retry_count}/{self.max_retries} 次)"
+                )
                 revision_prompt = f"""原始用户请求：{user_input}
 
 请根据以下问题修正之前的计划：
@@ -126,28 +134,38 @@ class NLU:
                             },
                         }
                         conversation_history.append(conv_turn)
-                response = self.adviser.generate_response(
+                response = await self.adviser.generate_response(
                     revision_prompt,
                     conversation_history=conversation_history,
                     use_rag=True,
                     rag_top_k=25,
                     debug=False,
                 )
-                explanation, is_safe = self.verifier.assess_cur_response(response)
+                explanation, is_safe = await self.verifier.assess_cur_response(response)
 
-                with open(self.log_path, "a+", encoding="utf-8") as f:
-                    f.write(
+                async with aiofiles.open(self.log_path, "a+", encoding="utf-8") as f:
+                    await f.write(
                         f"\n----------------------- Regenerated Response -----------------------\n{json.dumps(response, ensure_ascii=False, indent=2)}\n"
                     )
-                    f.write(f"Safety: {is_safe}\nExplanation: {explanation}\n")
+                    await f.write(f"Safety: {is_safe}\nExplanation: {explanation}\n")
+
+            # 如果达到最大重试次数仍未通过验证, 发出警告
+            if not is_safe:
+                print(
+                    f"⚠️ 警告: 已达到最大重试次数 ({self.max_retries}), 但方案仍存在问题. 返回最后一次生成的结果."
+                )
+                async with aiofiles.open(self.log_path, "a+", encoding="utf-8") as f:
+                    await f.write(
+                        f"\n⚠️ 警告: 已达到最大重试次数, 最终状态: is_safe={is_safe}\n"
+                    )
         else:
             print("Recommendation-type task detected: Skipping Verifier check.")
 
         # 更新历史记录
         self.history.append({"user": user_input, "response": response})
-        with open(self.history_path, "a+", encoding="utf-8") as f:
-            f.write(f"\n------------ User ------------\n{user_input}\n")
-            f.write(
+        async with aiofiles.open(self.history_path, "a+", encoding="utf-8") as f:
+            await f.write(f"\n------------ User ------------\n{user_input}\n")
+            await f.write(
                 f"------------ Response ------------\n{json.dumps(response, ensure_ascii=False, indent=2)}\n"
             )
 

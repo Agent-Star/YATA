@@ -1,10 +1,9 @@
 # adviser_itinerary.py
-# adviser_itinerary.py
 # -*- coding: utf-8 -*-
 import json
 
 
-def generate_itinerary(adviser, result, rag_results, debug=False):
+async def generate_itinerary(adviser, result, rag_results, debug=False):
     # 从意图里抓一些上下文（城市、日期等）
     intent = result.get("intent_parsed", {}) if isinstance(result, dict) else {}
     city = ""
@@ -78,7 +77,7 @@ def generate_itinerary(adviser, result, rag_results, debug=False):
     """
     # 关键：用 ask_text 让模型输出纯 Markdown 长文
     # 使用更大的 max_tokens 以确保能生成完整的长行程（1800-2500字约需要8000-12000 tokens）
-    markdown = adviser.ask_text(itinerary_prompt, temperature=0.6, max_tokens=12000)
+    markdown = await adviser.ask_text(itinerary_prompt, temperature=0.6, max_tokens=12000)
 
     if debug:
         print("• itinerary generated (markdown, long form).")
