@@ -22,13 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
 from agents.timestamp import add_timestamp_to_message, create_timestamped_message
 from auth import User, current_active_user
+from external_services.exceptions import NLUServiceError, ServiceUnavailableError
 from external_services.nlu_client import get_nlu_client
 from auth.database import get_async_session
 from auth.models import Favorite
 from core import settings
 from schema.schema import FavoriteCreate, FavoriteRead, FavoriteResponse
 from service.thread_manager import create_new_thread_for_user, get_or_create_main_thread
-from service.utils import convert_message_content_to_string, remove_tool_calls
 
 logger = logging.getLogger(__name__)
 
@@ -204,29 +204,27 @@ async def plan_stream(
         生成 SSE 事件流
 
         直接调用 NLU 服务实现真正的逐 token 流式输出,
-        绕过 LangGraph 的 Functional API 限制.
+        如果 NLU 失败则 fallback 到 research-assistant.
         """
+        # 获取用户的主 Thread ID
+        thread_id = await get_or_create_main_thread(current_user, session)
+
+        # 构建配置
+        configurable: dict[str, Any] = {"thread_id": thread_id, "user_id": str(current_user.id)}
+        if request.context and request.context.language:
+            configurable["language"] = request.context.language
+        if settings.DEFAULT_MODEL:
+            configurable["model"] = settings.DEFAULT_MODEL
+
+        config = RunnableConfig(configurable=configurable)
+
+        # 构建输入消息 (带时间戳)
+        input_message = create_timestamped_message(request.prompt, HumanMessage)
+        message_id = f"msg-{id(input_message)}"
+
         try:
-            # 获取用户的主 Thread ID
-            thread_id = await get_or_create_main_thread(current_user, session)
-
-            # 构建配置
-            configurable: dict[str, Any] = {"thread_id": thread_id, "user_id": str(current_user.id)}
-            if request.context and request.context.language:
-                configurable["language"] = request.context.language
-            if settings.DEFAULT_MODEL:
-                configurable["model"] = settings.DEFAULT_MODEL
-
-            config = RunnableConfig(configurable=configurable)
-
-            # 构建输入消息 (带时间戳)
-            input_message = create_timestamped_message(request.prompt, HumanMessage)
-            message_id = f"msg-{id(input_message)}"
-
-            # ========== 直接调用 NLU，边接收边转发 ==========
+            # ========== 尝试调用 NLU 流式 ==========
             full_content = ""
-            nlu_session_id = None
-            nlu_status = None
 
             async with get_nlu_client() as nlu_client:
                 async for event in nlu_client.call_nlu_stream(
@@ -241,12 +239,22 @@ async def plan_stream(
                         full_content += delta
                         yield f"data: {json.dumps({'type': 'token', 'delta': delta})}\n\n"
 
+                    elif event_type == "error":
+                        # NLU 返回错误
+                        error_message = event.get("message", "Unknown error")
+                        logger.error(f"PlanStream: NLU returned error - {error_message}")
+                        raise NLUServiceError(error_message)
+
                     elif event_type == "end":
-                        nlu_session_id = event.get("session_id")
-                        nlu_status = event.get("status")
+                        # NLU 成功完成
                         break
 
-            # ========== 保存完整历史到 checkpoint ==========
+            # 检查是否收到了完整的回复
+            if not full_content:
+                logger.warning("PlanStream: NLU returned empty content")
+                raise NLUServiceError("NLU returned empty content")
+
+            # ========== NLU 成功，保存历史 ==========
 
             # 创建完整的 AIMessage
             final_message = AIMessage(content=full_content)
@@ -262,12 +270,63 @@ async def plan_stream(
             # 发送结束事件
             empty_dict = {}
             yield f"data: {json.dumps({'type': 'end', 'messageId': message_id, 'metadata': empty_dict})}\n\n"
-
-            # 发送 [DONE] 标记
             yield "data: [DONE]\n\n"
 
+        except (ServiceUnavailableError, NLUServiceError) as e:
+            # ========== NLU 失败，Fallback 到 research-assistant ==========
+            logger.warning(
+                f"PlanStream: NLU failed ({type(e).__name__}: {e}), "
+                f"falling back to research-assistant"
+            )
+
+            try:
+                # 获取 research-assistant agent
+                research_agent = get_agent("research-assistant")
+
+                # 调用 research-assistant（使用流式）
+                logger.info("PlanStream: Calling research-assistant as fallback")
+
+                async for stream_event in research_agent.astream(
+                    {"messages": [input_message]},
+                    config=config,
+                    stream_mode=["messages"],
+                    subgraphs=True
+                ):
+                    if not isinstance(stream_event, tuple):
+                        continue
+
+                    # 解析事件
+                    if len(stream_event) == 3:
+                        _, stream_mode, event = stream_event
+                    else:
+                        stream_mode, event = stream_event
+
+                    # 处理 messages 事件 (token 流)
+                    if stream_mode == "messages":
+                        msg, _ = event
+                        if isinstance(msg, AIMessageChunk):
+                            content = msg.content
+                            if content:
+                                # 转换为字符串（处理可能的复杂内容类型）
+                                if isinstance(content, str):
+                                    delta = content
+                                else:
+                                    delta = str(content)
+                                yield f"data: {json.dumps({'type': 'token', 'delta': delta})}\n\n"
+
+                # 发送结束事件
+                empty_dict = {}
+                yield f"data: {json.dumps({'type': 'end', 'messageId': message_id, 'metadata': empty_dict})}\n\n"
+                yield "data: [DONE]\n\n"
+
+            except Exception as fallback_error:
+                logger.error(f"PlanStream: Fallback to research-assistant also failed: {fallback_error}")
+                yield f"data: {json.dumps({'type': 'error', 'content': '服务暂时不可用，请稍后重试'})}\n\n"
+                yield "data: [DONE]\n\n"
+
         except Exception as e:
-            logger.error(f"流式规划失败: {e}")
+            # ========== 其他未预期的错误 ==========
+            logger.error(f"PlanStream: Unexpected error: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'error', 'content': '服务器异常'})}\n\n"
             yield "data: [DONE]\n\n"
 

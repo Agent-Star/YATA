@@ -72,11 +72,13 @@ return entrypoint.final(
 ### 为什么 Fallback 时流式正常？
 
 Fallback 调用的是 `research-assistant`，它使用 **StateGraph**：
+
 - StateGraph 会捕获 LLM 调用过程中的**中间状态**
 - LangGraph 自动拦截 LLM 的流式输出
 - 不需要手动收集 chunks
 
 **Functional API 的限制：**
+
 - 函数必须**完全执行完毕**后才能返回
 - 返回的 chunks 才会被 LangGraph 处理
 - 无法实现真正的实时流式输出
@@ -86,6 +88,7 @@ Fallback 调用的是 `research-assistant`，它使用 **StateGraph**：
 ### 核心挑战
 
 Functional API 的设计限制导致：
+
 - **无法在函数执行过程中流式输出**
 - 必须等待函数返回后，LangGraph 才开始处理 value
 - 与 NLU 的流式接口不兼容
@@ -93,6 +96,7 @@ Functional API 的设计限制导致：
 ### 方案 A：绕过 agent.astream，直接流式转发 ⭐⭐⭐⭐⭐
 
 **核心思路：**
+
 - 不依赖 LangGraph 的流式机制
 - 在 `planner_routes.py:plan_stream` 中直接调用 NLU
 - 边接收边转发，实现真正的流式输出
@@ -175,6 +179,7 @@ async def generate_events() -> AsyncGenerator[str, None]:
 ### 方案 B：修改 travel_planner 为无状态转发 ⭐⭐⭐⭐
 
 **核心思路：**
+
 - 将 `travel_planner_functional` 改为简单的转发函数
 - 在 `planner_routes.py` 中处理流式输出和历史保存
 
@@ -189,10 +194,12 @@ async def generate_events() -> AsyncGenerator[str, None]:
 ### 方案 C：使用 StateGraph 替代 Functional API ⭐⭐
 
 **核心思路：**
+
 - 将 `travel_planner` 改回 StateGraph
 - 但使用特殊的消息合并逻辑避免历史记录分块
 
 **缺点：**
+
 - 需要大量重构
 - 可能回到之前的分块问题
 
@@ -257,6 +264,7 @@ async def save_history_helper(
 ```
 
 **关键特性：**
+
 - 不调用 NLU（避免重复请求）
 - 接收已生成的消息并直接保存
 - 使用 `previous` 参数合并历史
@@ -283,6 +291,7 @@ async def save_history_helper(
 **文件：`src/service/planner_routes.py`**
 
 **修改 1：添加导入（第 23、25 行）**
+
 ```python
 from agents.timestamp import add_timestamp_to_message, create_timestamped_message
 from external_services.nlu_client import get_nlu_client
@@ -321,10 +330,73 @@ await save_helper.ainvoke(
 ```
 
 **优势：**
+
 1. ✅ **真正的流式输出**：直接从 NLU 转发，无需等待函数返回
 2. ✅ **避免重复调用**：只调用 NLU 一次
 3. ✅ **内容一致性**：流式输出和保存的内容完全一致
 4. ✅ **历史完整性**：正确保存用户输入和 AI 响应
+5. ✅ **Fallback 支持**：NLU 失败时自动切换到 research-assistant
+
+#### 4. 实现 Fallback 逻辑
+
+**文件：`src/service/planner_routes.py`**
+
+**添加异常处理导入（第 25 行）：**
+
+```python
+from external_services.exceptions import NLUServiceError, ServiceUnavailableError
+```
+
+**Fallback 实现（第 279-329 行）：**
+
+```python
+except (ServiceUnavailableError, NLUServiceError) as e:
+    # NLU 失败，Fallback 到 research-assistant
+    logger.warning(
+        f"PlanStream: NLU failed ({type(e).__name__}: {e}), "
+        f"falling back to research-assistant"
+    )
+
+    try:
+        # 获取 research-assistant agent
+        research_agent = get_agent("research-assistant")
+
+        # 调用 research-assistant（使用流式）
+        async for stream_event in research_agent.astream(
+            {"messages": [input_message]},
+            config=config,
+            stream_mode=["messages"],
+            subgraphs=True
+        ):
+            # 解析并转发 token
+            if stream_mode == "messages":
+                msg, _ = event
+                if isinstance(msg, AIMessageChunk):
+                    # 流式转发
+                    yield f"data: {json.dumps({'type': 'token', 'delta': delta})}\n\n"
+
+        # 发送结束事件
+        yield f"data: {json.dumps({'type': 'end', ...})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    except Exception as fallback_error:
+        # Fallback 也失败
+        yield f"data: {json.dumps({'type': 'error', 'content': '服务暂时不可用，请稍后重试'})}\n\n"
+        yield "data: [DONE]\n\n"
+```
+
+**Fallback 触发条件：**
+
+1. NLU 服务不可达（`ServiceUnavailableError`）
+2. NLU 返回错误事件（`event.type == "error"`）
+3. NLU 返回空内容（`full_content` 为空）
+
+**Fallback 行为：**
+
+- 自动切换到 `research-assistant`
+- 保持流式输出
+- `research-assistant` 的响应也会被自动保存到历史记录（由 StateGraph 处理）
+- 如果 fallback 也失败，返回友好的错误提示
 
 ---
 
@@ -371,10 +443,17 @@ NLU 模块的实现是**正确的**：
    - 导入 `save_history_helper`（第 16 行）
    - 注册 `save-history-helper` agent（第 53-56 行）
 
-3. **`src/service/planner_routes.py`**
-   - 添加必要导入：`add_timestamp_to_message`, `get_nlu_client`（第 23、25 行）
-   - 重写 `generate_events()` 函数以直接调用 NLU（第 202-279 行）
-   - 使用 `save-history-helper` 保存历史（第 256-260 行）
+3. **`src/service/planner_routes.py`** ⭐ **核心修改**
+   - 添加异常处理导入（第 25 行）：`NLUServiceError`, `ServiceUnavailableError`
+   - 添加必要导入（第 23、26 行）：`add_timestamp_to_message`, `get_nlu_client`
+   - 重写 `generate_events()` 函数（第 203-335 行）：
+     - 直接调用 NLU 并实时流式转发（第 226-250 行）
+     - 检测 NLU 错误和空内容（第 242-254 行）
+     - NLU 成功时保存历史（第 258-272 行）
+     - **实现 Fallback 逻辑**（第 276-327 行）：
+       - 捕获 NLU 异常
+       - 自动切换到 research-assistant
+       - 保持流式输出
 
 ### 未修改的文件
 
@@ -398,10 +477,17 @@ NLU 模块的实现是**正确的**：
    - AI 响应完整保存
    - 多轮对话上下文正确
 
-3. **功能完整性**
-   - Fallback 机制仍然正常
+3. **Fallback 机制** ⭐ **新增**
+   - NLU 服务不可用时自动切换到 research-assistant
+   - NLU 返回错误时自动 fallback
+   - NLU 返回空内容时自动 fallback
+   - Fallback 过程中保持流式输出
+   - 用户无感知切换
+
+4. **功能完整性**
    - 收藏功能可用
    - 历史记录查询正确
+   - 多种问题类型都能处理（旅行规划、一般问答）
 
 ### 🔍 需要验证
 
@@ -423,4 +509,3 @@ NLU 模块的实现是**正确的**：
 2. **添加缓存层**：对相同问题的响应进行缓存，减少 NLU 调用
 3. **监控和日志**：添加详细的性能监控和调用链追踪
 4. **单元测试**：为新的 `save_history_helper` 添加测试用例
-
