@@ -4,6 +4,35 @@
 
 **2025-11-18**
 
+## 迁移状态
+
+✅ **已完成** - 代码迁移完成，循环导入问题已修复，待运行时测试验证
+
+## 问题修复
+
+### 循环导入问题
+
+**问题**：初次实现时出现循环导入错误：
+```
+ImportError: cannot import name 'get_agent' from partially initialized module 'agents.agents'
+(most likely due to a circular import)
+```
+
+**原因**：
+- `agents.agents` 导入 `travel_planner_functional`
+- `travel_planner_functional` 导入 `agents.agents.get_agent`
+
+**解决方案**：使用延迟导入（参考旧实现 `travel_planner_old.py`）
+```python
+# 在 fallback 异常处理块内部导入，而不是在模块顶部
+try:
+    # 延迟导入以避免循环导入
+    from agents.agents import get_agent
+
+    research_agent = get_agent("research-assistant")
+    # ...
+```
+
 ## 迁移内容
 
 成功将 Travel Planner Agent 从 StateGraph 重构为 Functional API，解决流式返回历史记录分块问题。

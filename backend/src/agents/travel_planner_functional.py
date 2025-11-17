@@ -21,7 +21,6 @@ from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, Human
 from langchain_core.runnables import RunnableConfig
 from langgraph.func import entrypoint
 
-from agents.agents import get_agent
 from agents.timestamp import add_timestamp_to_message
 from external_services import (
     NLUServiceError,
@@ -184,6 +183,9 @@ async def travel_planner_functional(
         )
 
         try:
+            # 延迟导入以避免循环导入
+            from agents.agents import get_agent
+
             # 获取 research-assistant agent
             research_agent = get_agent("research-assistant")
 
