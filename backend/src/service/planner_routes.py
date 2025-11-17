@@ -140,15 +140,16 @@ async def get_history(
         # 获取用户的主 Thread ID
         thread_id = await get_or_create_main_thread(current_user, session)
 
-        # 获取 agent (使用默认 agent 或专门的 travel planner)
-        agent: AgentGraph = get_agent(DEFAULT_AGENT)
-
         # 获取 Thread 状态
-        config = RunnableConfig(configurable={"thread_id": thread_id})
-        state = await agent.aget_state(config=config)
+        # 注意：不使用 agent.aget_state()，因为它返回 value（只有 chunks）
+        # 而是使用 get_history_helper 通过 previous 参数获取完整历史（来自 save）
+        history_helper = get_agent("get-history-helper")
 
-        # 提取消息历史
-        messages: list[AnyMessage] = state.values.get("messages", [])
+        config = RunnableConfig(configurable={"thread_id": thread_id})
+        result = await history_helper.ainvoke({"messages": []}, config=config)
+
+        # 提取消息历史（从 save 中保存的完整历史）
+        messages: list[AnyMessage] = result.get("messages", [])
 
         # TODO: 权宜之计, 彻底解决还需后端进行 message 分类 + 前端提供支持
         # filter_tool_message 为 True 时, 过滤掉 ToolMessage (不展示 snippet)

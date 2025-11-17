@@ -165,11 +165,11 @@ async def travel_planner_functional(
         # ========== 3. 返回结果（使用 entrypoint.final 区分流式和保存） ==========
 
         return entrypoint.final(
-            # value: 返回完整的消息历史（包含用户消息 + AI 响应）
-            # 用于 aget_state 读取历史记录
-            value={"messages": all_messages + [final_message]},
-            # save: 用于持久化到 checkpoint
-            # 历史记录读取时只会看到这个完整的 AIMessage，不会看到 chunks
+            # value: 用于流式输出 - 返回所有 chunks（逐 token 显示）
+            # LangGraph 会在 stream_mode=["messages"] 时逐个 yield 这些 chunks
+            value={"messages": chunks},
+            # save: 用于持久化到 checkpoint - 保存完整的消息历史
+            # 历史记录读取时通过 get_history_helper 获取（利用 previous 参数）
             save={"messages": all_messages + [final_message]},
         )
 
@@ -215,7 +215,7 @@ async def travel_planner_functional(
 
             # 返回 research-assistant 的结果
             return entrypoint.final(
-                value={"messages": all_messages + ai_responses},
+                value={"messages": ai_responses},
                 save={"messages": all_messages + ai_responses},
             )
 
@@ -230,6 +230,44 @@ async def travel_planner_functional(
         # 其他未预期的错误
         logger.error(f"TravelPlanner: Unexpected error - {e}", exc_info=True)
         raise
+
+
+# ========== 辅助函数：用于获取完整历史记录 ==========
+
+
+@entrypoint()
+async def get_history_helper(
+    inputs: dict[str, list[AnyMessage]],
+    *,
+    previous: dict[str, list[AnyMessage]] | None,
+    config: RunnableConfig,
+) -> entrypoint.final:
+    """
+    辅助函数：用于获取完整的历史记录
+
+    利用 previous 参数能正确获取 save 内容的特性，
+    绕过 aget_state 只返回 value 的限制。
+
+    Args:
+        inputs: 空输入（仅用于触发调用）
+        previous: 历史状态，包含完整的消息历史（来自 save）
+        config: 运行配置
+
+    Returns:
+        包含完整历史消息的 entrypoint.final
+    """
+    if previous and previous.get("messages"):
+        messages = previous["messages"]
+    else:
+        messages = []
+
+    logger.info(f"GetHistoryHelper: Retrieved {len(messages)} messages from checkpoint")
+
+    # 直接返回 previous 中的消息（来自 save）
+    return entrypoint.final(
+        value={"messages": messages},
+        save=previous if previous else {"messages": []},
+    )
 
 
 # ========== 导出 ==========
