@@ -133,13 +133,13 @@ class Settings(BaseSettings):
 
     # === NLU 服务配置 ===
     NLU_SERVICE_URL: str = "http://localhost:8010"
-    NLU_TIMEOUT: float = 30.0  # 原来的 30s 太阴间了, 直接给它先整个 5s, dev 环境测试有问题再改
+    NLU_TIMEOUT: float = 60.0  # 打大一点先
     NLU_MAX_RETRIES: int = 1
     ENABLE_NLU_FALLBACK: bool = True  # 是否启用兜底机制
 
     # === RAG 服务配置 ===
     RAG_SERVICE_URL: str = "http://localhost:8001"
-    RAG_TIMEOUT: float = 10.0
+    RAG_TIMEOUT: float = 60.0
     RAG_MAX_RETRIES: int = 1
 
     LANGCHAIN_TRACING_V2: bool = False
