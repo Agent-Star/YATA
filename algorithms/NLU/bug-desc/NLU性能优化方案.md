@@ -514,6 +514,294 @@ async function streamNLU(text, sessionId) {
 }
 ```
 
+### 2.5 Backend 侧改进（feat/backend 分支）
+
+**重要**: NLU 流式输出完成后，需要在 Backend 侧（`feat/backend` 分支）进行相应改进，才能实现端到端的流式体验。
+
+#### 当前 Backend 架构问题
+
+**travel-planner Agent** (`backend/src/agents/travel_planner.py`):
+
+- 调用 NLU 的 `/nlu/simple` 接口（**非流式**）
+- 使用 `nlu_client.call_nlu()` - 阻塞等待完整响应
+- 即使 `planner_routes.py` 使用 StreamingResponse，也无法流式输出 NLU 内容
+- **结果**: 前端等待 17-22 秒后一次性收到完整响应
+
+#### 需要的改进
+
+##### ① 在 NLUClient 添加流式方法
+
+**文件**: `backend/src/external_services/nlu_client.py`
+
+**新增方法**:
+
+```python
+from collections.abc import AsyncGenerator
+
+async def call_nlu_stream(
+    self,
+    text: str,
+    session_id: str | None = None,
+) -> AsyncGenerator[dict, None]:
+    """
+    流式调用 NLU 服务 (/nlu/simple/stream 接口)
+
+    Args:
+        text: 用户输入的自然语言文本
+        session_id: 会话 ID (可选)
+
+    Yields:
+        dict: SSE 事件
+            - {"type": "phase_start", "phase": "intent_parsing"}
+            - {"type": "phase_end", "phase": "intent_parsing", "result": {...}}
+            - {"type": "token", "delta": "..."}
+            - {"type": "end", "session_id": "..."}
+            - {"type": "error", "message": "..."}
+
+    Raises:
+        ServiceUnavailableError: NLU 服务不可达
+        NLUServiceError: NLU 服务返回错误
+    """
+    if not self._client:
+        raise RuntimeError("NLUClient must be used as async context manager")
+
+    request_data = NLURequest(text=text, session_id=session_id)
+
+    try:
+        logger.debug(
+            f"NLUClient: Streaming call to /nlu/simple/stream with "
+            f"text='{text[:50]}...', session_id={session_id}"
+        )
+
+        # 使用 httpx 的流式请求
+        async with self._client.stream(
+            "POST",
+            "/nlu/simple/stream",
+            json=request_data.model_dump(exclude_none=True),
+        ) as response:
+            response.raise_for_status()
+
+            # 逐行读取 SSE 事件
+            async for line in response.aiter_lines():
+                line = line.strip()
+
+                # 跳过空行和注释
+                if not line or line.startswith(":"):
+                    continue
+
+                # 解析 SSE 数据
+                if line.startswith("data: "):
+                    data = line[6:]  # 去掉 "data: " 前缀
+
+                    # 检查是否为结束标记
+                    if data == "[DONE]":
+                        logger.debug("NLUClient: Received [DONE] marker")
+                        break
+
+                    # 解析 JSON 事件
+                    try:
+                        event = json.loads(data)
+                        logger.debug(f"NLUClient: Received event type={event.get('type')}")
+                        yield event
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"NLUClient: Failed to parse SSE data: {e}")
+                        continue
+
+    except httpx.TimeoutException as e:
+        error_msg = f"NLU service timeout after {self.timeout}s"
+        logger.error(f"NLUClient: {error_msg}")
+        raise ServiceUnavailableError(error_msg) from e
+
+    except httpx.ConnectError as e:
+        error_msg = f"Cannot connect to NLU service at {self.base_url}"
+        logger.error(f"NLUClient: {error_msg}")
+        raise ServiceUnavailableError(error_msg) from e
+
+    except httpx.HTTPStatusError as e:
+        error_msg = f"NLU service returned error: {e.response.status_code} - {e.response.text}"
+        logger.error(f"NLUClient: {error_msg}")
+        raise NLUServiceError(error_msg) from e
+
+    except Exception as e:
+        error_msg = f"Unexpected error streaming NLU service: {e}"
+        logger.error(f"NLUClient: {error_msg}", exc_info=settings.is_dev())
+        raise NLUServiceError(error_msg) from e
+```
+
+##### ② 修改 travel_planner 支持流式处理
+
+**文件**: `backend/src/agents/travel_planner.py`
+
+**重构 call_nlu_service 节点**:
+
+```python
+async def call_nlu_service(
+    state: TravelPlannerState,
+    config: RunnableConfig,
+) -> TravelPlannerState:
+    """
+    调用 NLU 服务节点 (流式版本)
+
+    注意: 这个节点现在会逐步生成 AIMessageChunk，
+    由 StateGraph 的流式机制处理
+    """
+    messages = state["messages"]
+    if not messages:
+        logger.error("TravelPlanner: No messages in state")
+        return {
+            "messages": [],
+            "fallback_triggered": True,
+            "error_message": "No input message",
+        }
+
+    last_message = messages[-1]
+    if not isinstance(last_message, HumanMessage):
+        logger.error(f"TravelPlanner: Last message is not HumanMessage: {type(last_message)}")
+        return {
+            "messages": [],
+            "fallback_triggered": True,
+            "error_message": "Invalid message type",
+        }
+
+    user_input = str(last_message.content)
+    session_id = config.get("configurable", {}).get("thread_id")
+
+    logger.info(f"TravelPlanner: Streaming call to NLU service with session_id={session_id}")
+
+    try:
+        # 累积完整的回复内容
+        full_content = ""
+        chunks = []
+
+        async with get_nlu_client() as nlu_client:
+            async for event in nlu_client.call_nlu_stream(
+                text=user_input,
+                session_id=session_id,
+            ):
+                event_type = event.get("type")
+
+                if event_type == "token":
+                    # 逐 token 生成 AIMessageChunk
+                    delta = event.get("delta", "")
+                    full_content += delta
+
+                    # 创建 AIMessageChunk（会被 StateGraph 流式返回）
+                    chunk = AIMessageChunk(content=delta)
+                    chunk = cast(AIMessageChunk, add_timestamp_to_message(chunk))
+                    chunks.append(chunk)
+
+                elif event_type == "end":
+                    # 处理结束
+                    logger.info(f"TravelPlanner: NLU streaming completed, session_id={event.get('session_id')}")
+                    break
+
+                elif event_type == "error":
+                    # 错误处理
+                    error_msg = event.get("message", "Unknown error")
+                    logger.error(f"TravelPlanner: NLU service error - {error_msg}")
+                    return {
+                        "messages": [],
+                        "fallback_triggered": True,
+                        "error_message": error_msg,
+                    }
+
+        # 如果有内容，创建最终的 AIMessage
+        if full_content:
+            # 注意: StateGraph 会合并所有的 AIMessageChunk
+            # 这里我们只需要返回 chunks 即可
+            return {
+                "messages": chunks,
+                "fallback_triggered": False,
+            }
+        else:
+            logger.warning("TravelPlanner: No content received from NLU")
+            return {
+                "messages": [],
+                "fallback_triggered": True,
+                "error_message": "No content from NLU",
+            }
+
+    except ServiceUnavailableError as e:
+        logger.error(f"TravelPlanner: NLU service unavailable - {e}")
+        return {
+            "messages": [],
+            "fallback_triggered": True,
+            "error_message": str(e),
+        }
+
+    except NLUServiceError as e:
+        logger.error(f"TravelPlanner: NLU service error - {e}")
+        return {
+            "messages": [],
+            "fallback_triggered": True,
+            "error_message": str(e),
+        }
+
+    except Exception as e:
+        logger.error(f"TravelPlanner: Unexpected error - {e}", exc_info=True)
+        return {
+            "messages": [],
+            "fallback_triggered": True,
+            "error_message": str(e),
+        }
+```
+
+##### ③ planner_routes 自动支持流式
+
+**无需修改**: `backend/src/service/planner_routes.py` 的 `/plan/stream` 端点
+
+因为 `agent.astream()` 会自动流式处理 `call_nlu_service` 返回的 `AIMessageChunk`：
+
+```python
+# planner_routes.py:231-249 - 无需修改
+async for stream_event in agent.astream(
+    user_input, config=config, stream_mode=["messages"], subgraphs=True
+):
+    if stream_mode == "messages":
+        msg, _ = event
+        if isinstance(msg, AIMessageChunk):
+            content = remove_tool_calls(msg.content)
+            if content:
+                # 直接转发 NLU 的 token！
+                yield f"data: {json.dumps({'type': 'token', 'delta': convert_message_content_to_string(content)})}\n\n"
+```
+
+#### 测试 Backend 流式集成
+
+**前端调用示例**:
+
+```bash
+# 测试 Backend 的流式端点
+curl -N -X POST "http://localhost:8000/planner/plan/stream" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <token>" \
+     -d '{
+       "prompt": "规划一个4天的巴黎行程，预算8000元"
+     }'
+```
+
+**预期输出**:
+
+```
+data: {"type":"token","delta":"#"}
+data: {"type":"token","delta":" 4"}
+data: {"type":"token","delta":"天"}
+data: {"type":"token","delta":"巴黎"}
+...
+data: {"type":"end","messageId":"msg-123456","metadata":{}}
+data: [DONE]
+```
+
+#### 实施优先级
+
+**Backend 侧改进是可选的**，优先级如下：
+
+1. **高优先级**: NLU 侧阶段 1（并发调用）- 立即带来性能提升
+2. **中优先级**: NLU 侧阶段 3（流式输出）- 为 Backend 集成做准备
+3. **低优先级**: Backend 侧改进 - 实现完整的端到端流式体验
+
+**建议**: 先完成 NLU 侧优化，验证效果后再进行 Backend 侧改进。
+
 ---
 
 ## 阶段 3: 其他优化建议
