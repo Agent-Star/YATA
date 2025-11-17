@@ -13,7 +13,7 @@ from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
-from agents.travel_planner import travel_planner
+from agents.travel_planner_functional import travel_planner
 from core.settings import settings
 from schema import AgentInfo
 
