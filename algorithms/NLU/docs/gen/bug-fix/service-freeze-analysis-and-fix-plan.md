@@ -11,10 +11,12 @@ NLU 服务在 RAG 服务响应超时时会完全卡死, 即使连续按 Ctrl+C �
 **位置**: `fastapi_server.py:49-70`, `fastapi_server.py:73-139`
 
 **问题描述**:
+
 - FastAPI 端点声明为 `async def`, 但内部调用链条完全是同步的
 - 调用链条: `async endpoint` → `sync nlu.run()` → `sync adviser.generate_response()` → `sync call_rag_api()` (使用 `requests.post()`)
 
 **技术细节**:
+
 ```python
 @app.post("/nlu/simple")
 async def nlu_simple_api(request: NLURequest):  # ❌ 声明为 async
@@ -24,17 +26,20 @@ async def nlu_simple_api(request: NLURequest):  # ❌ 声明为 async
 ```
 
 在 `adviser_rag.py:17`:
+
 ```python
 resp = requests.post(rag_url, json=payload, timeout=15)  # ❌ 同步阻塞 I/O
 ```
 
 **导致的后果**:
+
 1. 当 `requests.post()` 发起 HTTP 请求时, 会阻塞整个 asyncio 事件循环
 2. uvicorn 的信号处理器 (SIGINT handler) 运行在同一个事件循环中
 3. 事件循环被阻塞, 导致信号处理器无法被调度执行
 4. 结果: Ctrl+C 完全无效, 服务无法优雅关闭
 
 **为什么 15 秒超时后还是卡住**:
+
 - 虽然 RAG 请求有 15 秒超时, 但如果 RAG 服务正在下载模型 (可能需要几分钟), timeout 会正确触发
 - 但问题在于后续的 Verifier 循环可能会再次调用 RAG, 累积阻塞时间
 - 更关键的是, 即使单次 15 秒, 在这期间服务也无法响应任何信号
@@ -46,6 +51,7 @@ resp = requests.post(rag_url, json=payload, timeout=15)  # ❌ 同步阻塞 I/O
 **位置**: `NLU_module/main.py:108-136`
 
 **问题描述**:
+
 ```python
 while not is_safe:  # ❌ 没有最大重试次数限制
     print("⚠️ Verifier 检测到问题, 正在重新生成...")
@@ -60,6 +66,7 @@ while not is_safe:  # ❌ 没有最大重试次数限制
 ```
 
 **导致的后果**:
+
 1. 如果 Verifier 持续判定行程不安全, 会导致无限循环
 2. 每次循环都会:
    - 调用 RAG API (可能超时 15 秒)
@@ -68,6 +75,7 @@ while not is_safe:  # ❌ 没有最大重试次数限制
 3. 与问题 1 结合, 导致服务长时间阻塞, 完全无法关闭
 
 **实际触发场景**:
+
 - RAG 服务首次启动, 正在下载模型
 - NLU 收到行程规划请求
 - RAG 超时返回空结果
@@ -83,6 +91,7 @@ while not is_safe:  # ❌ 没有最大重试次数限制
 **位置**: `RAG_chroma/embedder.py:13-26`, `RAG_chroma/api_server.py:46-55`
 
 **问题描述**:
+
 ```python
 def _get_model() -> SentenceTransformer:
     global _model
@@ -93,6 +102,7 @@ def _get_model() -> SentenceTransformer:
 ```
 
 虽然 `api_server.py` 的 startup_event 调用了 `get_embedding_dimension()`, 但对于 bge-m3 模型, 该函数会直接返回 1024, 不会真正加载模型:
+
 ```python
 # embedder.py:43-46
 def get_embedding_dimension() -> int:
@@ -102,6 +112,7 @@ def get_embedding_dimension() -> int:
 ```
 
 **导致的后果**:
+
 1. RAG 服务启动后, 模型并未真正加载到内存
 2. 第一次 `/search` 请求触发 `embed_texts()` 时, 才会真正加载模型
 3. 如果模型文件不存在, 会从 HuggingFace 下载 (BAAI/bge-m3 约 2.2GB)
@@ -115,6 +126,7 @@ def get_embedding_dimension() -> int:
 **位置**: `fastapi_server.py:83-85`
 
 **问题描述**:
+
 ```python
 if sid not in SESSIONS:
     SESSIONS[sid] = NLU(log_folder="log", file_name=sid, with_verifier=True)
@@ -122,11 +134,13 @@ if sid not in SESSIONS:
 ```
 
 每个 session 都会创建:
+
 - 一个新的 Adviser 实例 (包含 LLM 客户端)
 - 一个新的 Verifier 实例
 - 一个新的 Clarifier 实例
 
 **导致的后果**:
+
 1. 多个 session 创建多个 LLM 客户端实例, 浪费连接资源
 2. 内存占用随 session 数量线性增长
 3. `SESSIONS` 字典没有过期清理机制, 可能导致内存泄漏
@@ -139,12 +153,14 @@ if sid not in SESSIONS:
 **位置**: 整个 NLU 调用链
 
 **问题描述**:
+
 - RAG 调用有 15 秒超时 (`adviser_rag.py:17`)
 - 但 NLU 端点本身没有总体超时限制
 - LLM API 调用依赖 OpenAI SDK 默认超时 (通常为 60-600 秒)
 - Verifier 循环可能累积多次 LLM + RAG 调用
 
 **导致的后果**:
+
 - 单个请求可能耗时数分钟甚至更长
 - 在 async/sync 混用的情况下, 长时间阻塞事件循环
 - 影响服务的整体可用性
@@ -156,12 +172,14 @@ if sid not in SESSIONS:
 **位置**: `NLU_module/main.py:74-80`, `88-93`, 多处
 
 **问题描述**:
+
 ```python
 with open(self.log_path, "a+", encoding="utf-8") as f:
     f.write(...)  # ❌ 同步文件 I/O
 ```
 
 **导致的后果**:
+
 - 在高并发下, 同步文件写入会增加请求延迟
 - 与 async 端点结合, 会阻塞事件循环 (虽然影响较小)
 - 建议使用异步日志库 (如 `aiofiles`) 或队列 + 后台线程
@@ -173,18 +191,21 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
 ### 方案 1: 将 FastAPI 端点改为同步 (推荐, 最小改动)
 
 **优点**:
+
 - 改动最小, 只需修改 `fastapi_server.py`
 - 不需要重构 NLU 内部逻辑
 - FastAPI 会自动在线程池中运行同步端点, 不阻塞主事件循环
 - 可以正确响应 SIGINT 信号
 
 **缺点**:
+
 - 并发性能受限于线程池大小 (默认 40 个线程)
 - 仍然存在其他问题 (Verifier 无限循环, RAG 模型加载等)
 
 **实现步骤**:
 
 1. 修改 `fastapi_server.py` 的端点定义:
+
    ```python
    # 将 async def 改为 def
    @app.post("/nlu", response_model=NLUResponse)
@@ -197,6 +218,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
    ```
 
 2. 修改 startup_event:
+
    ```python
    @app.on_event("startup")
    def startup_event():  # 去掉 async
@@ -204,6 +226,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
    ```
 
 **预期效果**:
+
 - 服务可以正确响应 Ctrl+C 信号
 - 同步阻塞调用运行在线程池中, 不阻塞主事件循环
 - 其他线程的请求不受影响
@@ -213,17 +236,20 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
 ### 方案 2: 重构为完全异步架构 (最佳, 但改动较大)
 
 **优点**:
+
 - 最佳性能和可扩展性
 - 完全非阻塞, 可以处理大量并发请求
 - 符合 FastAPI async 的设计理念
 
 **缺点**:
+
 - 需要重构大量代码
 - 需要替换所有同步 I/O 操作
 
 **实现步骤**:
 
 1. 替换 `requests` 为 `httpx.AsyncClient` (`adviser_rag.py`):
+
    ```python
    import httpx
 
@@ -245,6 +271,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
    - 如果使用其他 SDK, 查看是否有 async 版本
 
 3. 将文件 I/O 改为异步 (`aiofiles`):
+
    ```python
    import aiofiles
 
@@ -253,6 +280,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
    ```
 
 4. 重构 NLU 类的所有方法为 async:
+
    ```python
    async def run(self, contents, context=None):
        ...
@@ -261,6 +289,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
    ```
 
 **预期效果**:
+
 - 完全非阻塞架构
 - 高并发性能
 - 服务可以正确响应信号
@@ -270,17 +299,20 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
 ### 方案 3: 使用 asyncio.to_thread() 包装同步调用 (折中方案)
 
 **优点**:
+
 - 改动较小, 主要在 `fastapi_server.py`
 - 不阻塞事件循环
 - 保持异步端点的优势
 
 **缺点**:
+
 - 仍然依赖线程池
 - 内部调用链仍是同步的
 
 **实现步骤**:
 
 1. 使用 `asyncio.to_thread()` 包装同步调用:
+
    ```python
    import asyncio
 
@@ -308,6 +340,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
    ```
 
 **预期效果**:
+
 - 同步调用运行在线程池中, 不阻塞事件循环
 - 服务可以正确响应信号
 - 代码改动较小
@@ -321,6 +354,7 @@ with open(self.log_path, "a+", encoding="utf-8") as f:
 **实现步骤**:
 
 修改 `NLU_module/main.py:108-136`:
+
 ```python
 # 调用 Verifier 审查
 task_type = response.get("intent_parsed", {}).get("task_type", "")
@@ -388,6 +422,7 @@ else:
 **实现步骤**:
 
 修改 `RAG_chroma/api_server.py:46-55`:
+
 ```python
 @app.on_event("startup")
 async def startup_event():
@@ -413,6 +448,7 @@ async def startup_event():
 ```
 
 同时优化 `embedder.py:42-66`:
+
 ```python
 def get_embedding_dimension() -> int:
     """返回当前 embedding 模型的向量维度"""
@@ -444,6 +480,7 @@ def get_embedding_dimension() -> int:
 **实现步骤**:
 
 在 `fastapi_server.py` 中添加 session 过期清理:
+
 ```python
 import time
 from threading import Lock
@@ -534,12 +571,14 @@ def nlu_simple_api(request: NLURequest):  # 使用同步端点
 
 1. 启动 NLU 服务
 2. 在另一个终端发送请求 (让 RAG 超时):
+
    ```bash
    # 先关闭 RAG 服务模拟超时
    curl -X POST "http://localhost:8010/nlu/simple" \
         -H "Content-Type: application/json" \
         -d '{"text": "规划一个4天的Pairs行程"}'
    ```
+
 3. 在服务处理请求时, 按 Ctrl+C
 4. **预期**: 服务应该在 1-2 秒内优雅关闭, 显示 "Shutting down" 信息
 
@@ -552,19 +591,23 @@ def nlu_simple_api(request: NLURequest):  # 使用同步端点
 ### 测试场景 3: RAG 模型预加载测试
 
 1. 删除 HuggingFace 缓存中的 bge-m3 模型:
+
    ```bash
    rm -rf ~/.cache/huggingface/hub/models--BAAI--bge-m3
    ```
+
 2. 启动 RAG 服务
 3. **预期**: 服务启动时下载并加载模型, 首次搜索请求不会触发下载
 
 ### 测试场景 4: 并发请求测试
 
 1. 使用多个并发请求测试服务稳定性:
+
    ```bash
    # 使用 wrk 或 ab 进行压力测试
    ab -n 100 -c 10 -p request.json -T "application/json" http://localhost:8010/nlu/simple
    ```
+
 2. **预期**: 服务应该稳定处理所有请求, 不崩溃, 不卡死
 
 ---
@@ -574,6 +617,7 @@ def nlu_simple_api(request: NLURequest):  # 使用同步端点
 在实现修复时, 注意 pyright 的类型检查:
 
 1. **async/await 类型标注**:
+
    ```python
    from typing import Dict, Any
 
@@ -582,6 +626,7 @@ def nlu_simple_api(request: NLURequest):  # 使用同步端点
    ```
 
 2. **Optional 类型**:
+
    ```python
    from typing import Optional
 
@@ -598,6 +643,7 @@ def nlu_simple_api(request: NLURequest):  # 使用同步端点
 **根本原因**: Async/Sync 混用 + 无限循环 + 延迟模型加载的三重组合导致服务卡死且无法关闭.
 
 **推荐修复路径**:
+
 1. 立即修复: 方案 1 (改为同步端点) + Verifier 重试限制 + RAG 预加载
 2. 中期优化: 添加超时保护 + Session 清理
 3. 长期架构: 方案 2 (完全异步化)
