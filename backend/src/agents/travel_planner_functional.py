@@ -270,6 +270,44 @@ async def get_history_helper(
     )
 
 
+@entrypoint()
+async def save_history_helper(
+    inputs: dict[str, list[AnyMessage]],
+    *,
+    previous: dict[str, list[AnyMessage]] | None,
+    config: RunnableConfig,
+) -> entrypoint.final:
+    """
+    辅助函数：用于保存消息到历史记录
+
+    用于在流式输出完成后，将完整的消息历史保存到 checkpoint。
+    不进行任何 NLU 调用，只负责持久化。
+
+    Args:
+        inputs: 包含要保存的新消息
+        previous: 历史状态，包含之前的消息历史
+        config: 运行配置
+
+    Returns:
+        包含更新后完整历史的 entrypoint.final
+    """
+    new_messages = inputs.get("messages", [])
+
+    # 合并历史消息和新消息
+    if previous and previous.get("messages"):
+        all_messages = previous["messages"] + new_messages
+    else:
+        all_messages = new_messages
+
+    logger.info(f"SaveHistoryHelper: Saved {len(new_messages)} new messages, total {len(all_messages)} messages")
+
+    # 保存到 checkpoint
+    return entrypoint.final(
+        value={"messages": all_messages},
+        save={"messages": all_messages},
+    )
+
+
 # ========== 导出 ==========
 
 # 保持与旧实现相同的导出名称，方便迁移
