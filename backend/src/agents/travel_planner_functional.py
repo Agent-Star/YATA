@@ -165,9 +165,9 @@ async def travel_planner_functional(
         # ========== 3. 返回结果（使用 entrypoint.final 区分流式和保存） ==========
 
         return entrypoint.final(
-            # value: 用于流式输出
-            # LangGraph 会在 stream_mode=["messages"] 时逐个 yield 这些 chunks
-            value={"messages": chunks},
+            # value: 返回完整的消息历史（包含用户消息 + AI 响应）
+            # 用于 aget_state 读取历史记录
+            value={"messages": all_messages + [final_message]},
             # save: 用于持久化到 checkpoint
             # 历史记录读取时只会看到这个完整的 AIMessage，不会看到 chunks
             save={"messages": all_messages + [final_message]},
@@ -215,7 +215,7 @@ async def travel_planner_functional(
 
             # 返回 research-assistant 的结果
             return entrypoint.final(
-                value={"messages": ai_responses},
+                value={"messages": all_messages + ai_responses},
                 save={"messages": all_messages + ai_responses},
             )
 
