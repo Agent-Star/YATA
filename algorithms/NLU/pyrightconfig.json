@@ -1,0 +1,7 @@
+// pyrightconfig.json
+
+{
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard",
+  "venvPath": "./.venv"
+}
