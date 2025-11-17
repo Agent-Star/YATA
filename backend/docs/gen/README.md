@@ -11,6 +11,14 @@ FastAPI-Users 用户认证系统集成的相关过程性文档:
 - `integration-complete.md` - 集成完成总结，包含快速开始、功能清单、API 端点一览等
 - `integration-summary.md` - 详细的技术实现和架构说明
 
+### `travel-planner/`
+
+Travel Planner Agent 流式返回优化的相关过程性文档:
+
+- `README.md` - 文档概览和快速开始指南
+- `streaming-chunks-history-fix.md` - 完整技术方案文档（问题分析、三种解决方案、实施计划）
+- `implementation-example.md` - Functional API 实现示例（完整代码、对比分析、迁移步骤）
+
 ## 命名规范
 
 所有过程性文档应遵循以下命名规范:
