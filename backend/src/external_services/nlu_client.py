@@ -156,6 +156,58 @@ class NLUClient:
             logger.warning(f"NLUClient: Health check failed - {e}")
             return False
 
+    async def delete_session(self, session_id: str) -> bool:
+        """
+        删除 NLU 服务中的会话
+
+        Args:
+            session_id: 要删除的会话 ID (对应 thread_id)
+
+        Returns:
+            bool: True 表示删除成功, False 表示删除失败或会话不存在
+        """
+        if not self._client:
+            raise RuntimeError("NLUClient must be used as async context manager")
+
+        try:
+            logger.debug(f"NLUClient: Deleting session {session_id}")
+
+            response = await self._client.delete(
+                f"/nlu/session/{session_id}",
+                timeout=5.0,
+            )
+
+            # 200-299 都认为是成功
+            if 200 <= response.status_code < 300:
+                data = response.json()
+                success = data.get("success", False)
+                message = data.get("message", "")
+                logger.info(f"NLUClient: Session deletion - {message}")
+                return success
+            else:
+                logger.warning(
+                    f"NLUClient: Session deletion failed - "
+                    f"status={response.status_code}, body={response.text}"
+                )
+                return False
+
+        except httpx.TimeoutException:
+            logger.warning(f"NLUClient: Session deletion timeout for {session_id}")
+            return False
+
+        except httpx.ConnectError:
+            logger.warning(
+                f"NLUClient: Cannot connect to NLU service to delete session {session_id}"
+            )
+            return False
+
+        except Exception as e:
+            logger.warning(
+                f"NLUClient: Unexpected error deleting session {session_id}: {e}",
+                exc_info=settings.is_dev(),
+            )
+            return False
+
 
 # === 工厂函数 ===
 

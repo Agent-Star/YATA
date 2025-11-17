@@ -6,13 +6,11 @@
 
 核心目录说明：
 
-- `api/`
-  - `fastapi_server.py` —— FastAPI 主服务入口
 - `NLU_module/`
   - `agents/adviser/` —— 多 Agent 智能体逻辑模块  
     - `adviser_intent.py`：意图识别  
     - `adviser_itinerary.py`：行程规划生成  
-    - `adviser_recommendation.py`：景点/活动推荐  
+    - `adviser_recommendation.py`：景点/活动推荐
     - `adviser_rag.py`：RAG 检索增强模块  
     - `clarifier.py`：信息补全与追问逻辑  
     - `verifier.py`：逻辑验证与一致性检查  
@@ -23,8 +21,9 @@
     - `agent_personas.py`：多智能体角色设定  
     - `parse_utils.py`：通用解析工具函数  
   - `log/` —— 运行日志目录  
-  - `initial.py`：系统初始化入口
+  - `initial.py`：系统初始化入口  
   - `main.py`：NLU 模块主入口
+- `fastapi_server.py` —— FastAPI 主服务入口
 
 ## 功能特性
 
@@ -35,11 +34,6 @@
 5. **多轮对话**：支持上下文理解和多轮追问（追问功能还未能在fastapi使用）
 
 ## 快速开始
-
-### 环境要求
-
-- Python 3.8+
-- 已安装项目依赖（NLU_module、RAG_chroma 等模块）
 
 ### 安装依赖
 
@@ -82,8 +76,7 @@ uv sync
 ### 启动服务器
 
 ```bash
-cd api
-uv run fastapi_server.py
+python fastapi_server.py
 ```
 
 服务器将在默认端口 **8010** 启动（可通过环境变量 `NLU_API_PORT` 修改）。
@@ -91,7 +84,7 @@ uv run fastapi_server.py
 或者使用 uvicorn 启动：
 
 ```bash
-uvicorn api.fastapi_server:app --host 0.0.0.0 --port 8010
+uvicorn fastapi_server:app --host 0.0.0.0 --port 8010
 ```
 
 ### 验证服务
@@ -203,7 +196,41 @@ curl http://localhost:8010/health
 - `status: "complete"`: 任务完成，返回完整的行程规划或推荐内容
 - `status: "incomplete"`: 需要更多信息，`reply` 字段包含追问内容
 
-### 3. 健康检查
+### 3. 删除会话
+
+**DELETE** `/nlu/session/{session_id}`
+
+主动删除指定会话，释放服务器内存。通常在对话完全结束时由 backend 调用。
+
+**路径参数**：
+
+- `session_id` (必填): 要删除的会话 ID
+
+**响应格式**：
+
+```json
+{
+    "success": true,
+    "message": "会话 550e8400-e29b-41d4-a716-446655440000 已删除"
+}
+```
+
+**会话不存在时**：
+
+```json
+{
+    "success": false,
+    "message": "会话 550e8400-e29b-41d4-a716-446655440000 不存在"
+}
+```
+
+**使用说明**：
+
+- 主动删除可以立即释放会话占用的内存资源
+- 删除后该会话的所有对话历史将丢失
+- 即使不主动删除，系统也会在达到 100 个会话上限时自动淘汰最旧的会话 (LRU 策略)
+
+### 4. 健康检查
 
 **GET** `/health`
 
@@ -264,6 +291,12 @@ if result["status"] == "complete":
 else:
     print("❓ 需要更多信息：")
     print(result["reply"])
+
+# 对话结束后，主动删除会话释放资源（可选）
+delete_response = requests.delete(f"{BASE_URL}/nlu/session/{session_id}")
+delete_result = delete_response.json()
+if delete_result["success"]:
+    print(f"✅ {delete_result['message']}")
 ```
 
 #### 使用基础接口（获取完整响应）
@@ -356,19 +389,40 @@ curl -X POST "http://localhost:8002/nlu/simple" \
 - 不经过 Verifier 审查
 - 基于 RAG 检索相关旅行信息
 
-## 会话管理（还没有调试好）
+## 会话管理
 
 ### 会话生命周期
 
 1. **创建会话**：首次请求时不提供 `session_id`，系统自动创建新会话
 2. **使用会话**：后续请求使用返回的 `session_id` 维持对话上下文
-3. **会话存储**：会话存储在服务器内存中，重启后丢失
+3. **删除会话**：
+   - **主动删除**: Backend 调用 `DELETE /nlu/session/{session_id}` 主动删除会话
+   - **被动清理 (LRU)**: 当会话数达到 100 个上限时，自动淘汰最旧的会话
 
 ### 会话特点
 
 - 每个会话维护独立的 NLU 实例和对话历史
 - 支持多用户同时使用，会话之间互不影响
 - 会话日志保存在 `NLU_module/log/{session_id}/` 目录下
+- 采用 LRU (Least Recently Used) 策略自动清理长时间未使用的会话
+- Backend 应在对话完全结束时调用删除接口，及时释放资源
+
+### 会话清理策略
+
+**被动清理 (LRU)**:
+
+- 会话数上限: 100 个
+- 当创建新会话时，如果已达上限，自动删除最久未使用的会话
+- 每次请求时，会话会被标记为"最近使用"
+
+**主动清理**:
+
+- Backend 在对话结束时调用 `DELETE /nlu/session/{session_id}`
+- 立即释放会话占用的内存和资源
+- 推荐在以下场景主动删除：
+  - 用户明确表示对话结束
+  - 对话超时或用户离线
+  - 任务完成且不需要后续追问
 
 ## 架构说明
 
