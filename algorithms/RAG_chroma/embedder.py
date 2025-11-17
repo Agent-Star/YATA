@@ -84,3 +84,18 @@ def rerank(query: str, documents: List[str]) -> List[float]:
     pairs = [[query, doc] for doc in documents]
     scores = reranker.predict(pairs, show_progress_bar=False)
     return scores.tolist() if hasattr(scores, "tolist") else list(scores)
+
+
+def warmup_models() -> None:
+    """预加载模型 (在服务启动时调用, 避免首次请求超时)"""
+    print("🔄 开始预加载 embedding 模型...")
+    _ = _get_model()
+    print("✅ Embedding 模型预加载完成")
+
+    # 如果启用了重排序, 也预加载重排序模型
+    if settings.use_reranking:
+        print("🔄 开始预加载重排序模型...")
+        _ = _get_reranker()
+        print("✅ 重排序模型预加载完成")
+    else:
+        print("ℹ️  重排序未启用, 跳过重排序模型预加载")

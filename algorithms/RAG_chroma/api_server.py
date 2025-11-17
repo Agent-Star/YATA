@@ -7,7 +7,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from db import init_db
-from embedder import get_embedding_dimension
+from embedder import get_embedding_dimension, warmup_models
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -45,13 +45,17 @@ class SearchResponse(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    """初始化数据库"""
+    """初始化数据库并预加载模型"""
     try:
+        # 预加载 embedding 模型 (避免首次请求超时)
+        warmup_models()
+
+        # 初始化数据库
         emb_dim = get_embedding_dimension()
         init_db(embedding_dim=emb_dim)
         print(f"✅ RAG API 服务已启动，数据库维度: {emb_dim}")
     except Exception as e:
-        print(f"❌ 数据库初始化失败: {e}", file=sys.stderr)
+        print(f"❌ 服务初始化失败: {e}", file=sys.stderr)
         # 不中断启动，允许后续重试
 
 

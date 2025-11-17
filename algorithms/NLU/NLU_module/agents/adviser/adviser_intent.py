@@ -1,5 +1,4 @@
 # adviser_intent.py
-from typing import Optional
 
 from NLU_module.source.prompt import (
     prompt_clarify,
@@ -9,15 +8,15 @@ from NLU_module.source.prompt import (
 )
 
 
-def run_intent_parsing(
-    adviser, user_input: str, conversation_history: Optional[list] = None, debug=False
+async def run_intent_parsing(
+    adviser, user_input: str, conversation_history: list | None = None, debug=False
 ):
     """
     参数:
         conversation_history: 历史对话列表，格式为 [{"user": "用户输入", "response": {...}}, ...]
     """
     result = {}
-    result["intent_parsed"] = adviser.ask_json(
+    result["intent_parsed"] = await adviser.ask_json(
         prompt_parse_intent(user_input, conversation_history),
         schema_hint="""{
           "task_type": "string",
@@ -42,7 +41,7 @@ def run_intent_parsing(
         or (not date_window.get("from") and not date_window.get("to"))
     )
     if needs_normalization:
-        normalized_date = adviser.ask_json(
+        normalized_date = await adviser.ask_json(
             prompt_normalize_date(user_input),
             schema_hint='{"from":"YYYY-MM-DD","to":"YYYY-MM-DD","uncertainty":"boolean","reason":"string"}',
         )
@@ -51,13 +50,13 @@ def run_intent_parsing(
     # Step 3: 澄清缺失信息
     missing = result["intent_parsed"].get("missing_slots", [])
     if missing:
-        result["clarification"] = adviser.ask_json(
+        result["clarification"] = await adviser.ask_json(
             prompt_clarify(missing, result["intent_parsed"]),
             schema_hint='{"questions":["string"],"suggestions":["string"]}',
         )
 
     # Step 4: Query 改写
-    result["query_rewrite"] = adviser.ask_json(
+    result["query_rewrite"] = await adviser.ask_json(
         prompt_query_rewrite(user_input, result["intent_parsed"]),
         schema_hint='{"keywords":["string"],"city_alias":["string"],"time_window":{"from":"YYYY-MM-DD","to":"YYYY-MM-DD"},"tags":["string"]}',
     )

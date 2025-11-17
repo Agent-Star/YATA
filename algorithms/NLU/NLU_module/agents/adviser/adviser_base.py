@@ -30,14 +30,14 @@ class AdviserBase:
         else:
             raise ValueError("Unsupported model name")
 
-    def _chat(
+    async def _chat(
         self, prompt: str, temperature: float = 0.3, max_tokens: Optional[int] = None
     ):
         if self.name.startswith("gpt"):
-            # 默认 max_tokens，对于长文本生成（如行程）使用更大的值
+            # 默认 max_tokens, 对于长文本生成 (如行程) 使用更大的值
             if max_tokens is None:
                 max_tokens = 4000
-            resp = self.client.chat.completions.create(
+            resp = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
@@ -57,12 +57,12 @@ class AdviserBase:
         inputs = self.tokenizer(prompt, return_tensors="pt")
         if torch.cuda.is_available():
             inputs = {k: v.to("cuda") for k, v in inputs.items()}
-        # 对于本地模型，如果指定了max_tokens，转换为max_new_tokens
+        # 对于本地模型, 如果指定了 max_tokens, 转换为 max_new_tokens
         max_new_tokens = max_tokens if max_tokens else 1500
         outputs = self.hf_model.generate(**inputs, max_new_tokens=max_new_tokens)
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    def ask_json(
+    async def ask_json(
         self,
         prompt: str,
         schema_hint: Optional[str] = None,
@@ -74,7 +74,7 @@ class AdviserBase:
             if schema_hint
             else ""
         )
-        text = self._chat(
+        text = await self._chat(
             "Return ONLY valid JSON.\n" + guard + prompt, temperature, max_tokens
         )
         try:
@@ -88,5 +88,5 @@ class AdviserBase:
                     pass
         return {"raw_text": text}
 
-    def ask_text(self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None):
-        return self._chat(prompt, temperature, max_tokens)
+    async def ask_text(self, prompt: str, temperature=0.3, max_tokens: Optional[int] = None):
+        return await self._chat(prompt, temperature, max_tokens)

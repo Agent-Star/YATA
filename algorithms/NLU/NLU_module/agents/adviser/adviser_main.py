@@ -1,6 +1,6 @@
 # adviser_main.py
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .adviser_aggregate import run_aggregate
 from .adviser_base import AdviserBase
@@ -14,7 +14,7 @@ from .clarifier import Clarifier
 
 
 # adviser_main.py
-def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
+def merge_partial(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
     if not old:
         return new or {}
 
@@ -26,7 +26,7 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
         if k == "task_type":
             old_type = old.get("task_type", "")
             new_type = v.lower() if isinstance(v, str) else str(v).lower()
-            # 如果旧的有明确的 task_type，新的如果是 "other" 或空，则保留旧的
+            # 如果旧的有明确的 task_type, 新的如果是 "other" 或空, 则保留旧的
             if (
                 old_type
                 and old_type != "other"
@@ -34,7 +34,7 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
             ):
                 # 保留旧的 task_type
                 continue
-            # 如果新的有明确的 task_type，则使用新的
+            # 如果新的有明确的 task_type, 则使用新的
             if new_type and new_type != "other":
                 out[k] = v
             continue
@@ -68,27 +68,37 @@ def merge_partial(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
 class Adviser:
     def __init__(self, model_name="gpt4o"):
         self.llm = AdviserBase(model_name)
-        self.memory: Dict[str, Any] = {}
+        self.memory: dict[str, Any] = {}
         self.clarifier = Clarifier()
 
-    def generate_response(
+    async def generate_response(
         self,
-        user_input,
-        conversation_history: Optional[list] = None,
-        use_rag=True,
-        rag_top_k=5,
-        debug=False,
-        skip_clarifier=False,
-    ):
+        user_input: str,
+        conversation_history: list | None = None,
+        use_rag: bool = True,
+        rag_top_k: int = 5,
+        debug: bool = False,
+        skip_clarifier: bool = False,
+    ) -> dict[str, Any]:
         """
+        异步生成响应
+
         参数:
-            conversation_history: 历史对话列表，格式为 [{"user": "用户输入", "response": {...}}, ...]
+            user_input: 用户输入文本
+            conversation_history: 历史对话列表, 格式为 [{"user": "用户输入", "response": {...}}, ...]
+            use_rag: 是否使用 RAG 检索
+            rag_top_k: RAG 返回结果数量
+            debug: 是否打印调试信息
+            skip_clarifier: 是否跳过 Clarifier
+
+        返回:
+            包含 NLU 处理结果的字典
         """
         t0 = time.time()
 
         # 1) parse intent for current user input
         result = (
-            run_intent_parsing(self.llm, user_input, conversation_history, debug) or {}
+            await run_intent_parsing(self.llm, user_input, conversation_history, debug) or {}
         )
         intent_cur = result.get("intent_parsed", {})
 
@@ -104,11 +114,11 @@ class Adviser:
                     "intent_parsed": clarify_result["revised_intent"],
                 }
 
-            # 信息完整，更新 memory
+            # 信息完整, 更新 memory
             self.memory = clarify_result["revised_intent"]
             result["intent_parsed"] = self.memory
         else:
-            # 跳过 Clarifier，直接用上次记忆
+            # 跳过 Clarifier, 直接用上次记忆
             result["intent_parsed"] = self.memory
 
         task_type = result["intent_parsed"].get("task_type", "itinerary")
@@ -160,7 +170,7 @@ class Adviser:
                     f"🧭 [RAG Query 构造] 类型={task_type}, Query={query_text}, 城市={city}"
                 )
 
-            rag_results = call_rag_api(query_text, city, rag_top_k, debug)
+            rag_results = await call_rag_api(query_text, city, rag_top_k, debug)
 
             if debug:
                 print(f"🔍 [RAG 精简查询] Query: {query_text}")
@@ -170,22 +180,22 @@ class Adviser:
         else:
             doc_summaries, rag_results = ["No external context."], []
 
-        result["context_summary"] = run_context_summary(
+        result["context_summary"] = await run_context_summary(
             self.llm, user_input, doc_summaries
         )
-        result["plan_steps"] = run_plan_actions(self.llm, result["intent_parsed"])
-        result["final_aggregation"] = run_aggregate(
+        result["plan_steps"] = await run_plan_actions(self.llm, result["intent_parsed"])
+        result["final_aggregation"] = await run_aggregate(
             self.llm, [], result["intent_parsed"]
         )
 
         # itinerary only if itinerary task
         if task_type == "itinerary":
-            result["detailed_itinerary"] = generate_itinerary(
+            result["detailed_itinerary"] = await generate_itinerary(
                 self.llm, result, rag_results, debug
             )
         elif task_type == "recommendation":
             subtype = result["intent_parsed"].get("subtype", "")
-            result["recommendations"] = generate_recommendations(
+            result["recommendations"] = await generate_recommendations(
                 self.llm, result, rag_results, debug=debug
             )
             result["final_output_type"] = f"recommendation_{subtype or 'general'}"

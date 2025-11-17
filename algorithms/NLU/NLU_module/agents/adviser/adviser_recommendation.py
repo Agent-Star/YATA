@@ -3,7 +3,7 @@
 import json
 
 
-def generate_recommendations(adviser, intent_result, rag_results=None, debug=False):
+async def generate_recommendations(adviser, intent_result, rag_results=None, debug=False):
     rag_results = rag_results or []
     intent = intent_result.get("intent_parsed", {})
     dests = intent.get("dest_pref", [])
@@ -124,7 +124,7 @@ def generate_recommendations(adviser, intent_result, rag_results=None, debug=Fal
       "next_questions": ["string"]
     }"""
 
-    out = adviser.ask_json(prompt, schema_hint=schema_hint)
+    out = await adviser.ask_json(prompt, schema_hint=schema_hint)
     if not isinstance(out, dict):
         out = {"raw_text": out}
     if debug:
@@ -158,7 +158,7 @@ def generate_recommendations(adviser, intent_result, rag_results=None, debug=Fal
     {items_text}
     """
         # 使用较大的 max_tokens 以确保推荐摘要完整（通常需要4000-6000 tokens）
-        natural_summary = adviser.ask_text(
+        natural_summary = await adviser.ask_text(
             summary_prompt, temperature=0.7, max_tokens=6000
         )
         out["natural_summary"] = natural_summary.strip()

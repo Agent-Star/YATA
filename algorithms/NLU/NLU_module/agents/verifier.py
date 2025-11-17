@@ -11,8 +11,8 @@ class Verifier:
         self.model = GPT_MODEL_NAME
         print(f"✅ Verifier initialized with Azure model: {self.model}")
 
-    def _ask(self, prompt: str):
-        response = self.client.chat.completions.create(
+    async def _ask(self, prompt: str):
+        response = await self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {
@@ -45,7 +45,7 @@ class Verifier:
                     pass
             return {"raw_text": text}
 
-    def assess_cur_response(self, plan_json: dict):
+    async def assess_cur_response(self, plan_json: dict):
         prompt = f"""
 You are a senior travel plan reviewer.
 Please check the following travel plan JSON for logical consistency and completeness:
@@ -66,7 +66,7 @@ Plan to evaluate:
 {json.dumps(plan_json, ensure_ascii=False, indent=2)}
         """
 
-        result = self._ask(prompt)
+        result = await self._ask(prompt)
 
         # 默认值防御，避免解析失败时报错
         is_safe = True
