@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Literal, cast
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessageChunk, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 
@@ -39,7 +39,7 @@ async def call_nlu_service(
     config: RunnableConfig,
 ) -> TravelPlannerState:
     """
-    调用 NLU 服务节点
+    调用 NLU 服务节点 (流式)
 
     Args:
         state: 当前状态
@@ -72,35 +72,83 @@ async def call_nlu_service(
     # 获取 session_id (使用 thread_id)
     session_id = config.get("configurable", {}).get("thread_id")
 
-    logger.info(f"TravelPlanner: Calling NLU service with session_id={session_id}")
+    logger.info(f"TravelPlanner: Calling NLU service (streaming) with session_id={session_id}")
 
     try:
-        # 调用 NLU 服务
+        # 流式调用 NLU 服务
+        full_content = ""
+        chunks = []
+        nlu_session_id = None
+        nlu_status = None
+
         async with get_nlu_client() as nlu_client:
-            nlu_response = await nlu_client.call_nlu(
+            async for event in nlu_client.call_nlu_stream(
                 text=user_input,
                 session_id=session_id,
-            )
+            ):
+                event_type = event.get("type")
 
-        logger.info(
-            f"TravelPlanner: NLU response received - "
-            f"type={nlu_response.type}, status={nlu_response.status}"
-        )
+                if event_type == "phase_start":
+                    # 阶段开始 (可选: 记录日志)
+                    phase = event.get("phase")
+                    logger.debug(f"TravelPlanner: NLU phase started - {phase}")
 
-        # 将 NLU 的回复转换为 AIMessage
-        ai_message = AIMessage(content=nlu_response.reply)
-        ai_message = cast(AIMessage, add_timestamp_to_message(ai_message))
+                elif event_type == "phase_end":
+                    # 阶段完成 (可选: 记录日志)
+                    phase = event.get("phase")
+                    logger.debug(f"TravelPlanner: NLU phase ended - {phase}")
+
+                elif event_type == "token":
+                    # 接收到一个 token
+                    delta = event.get("delta", "")
+                    full_content += delta
+
+                    # 创建 AIMessageChunk 并添加时间戳
+                    chunk = AIMessageChunk(content=delta)
+                    chunk = cast(AIMessageChunk, add_timestamp_to_message(chunk))
+                    chunks.append(chunk)
+
+                elif event_type == "end":
+                    # 流式结束
+                    nlu_session_id = event.get("session_id")
+                    nlu_status = event.get("status")
+                    logger.info(
+                        f"TravelPlanner: NLU streaming completed - "
+                        f"session_id={nlu_session_id}, status={nlu_status}"
+                    )
+                    break
+
+                elif event_type == "error":
+                    # NLU 返回错误
+                    error_message = event.get("message", "Unknown error")
+                    logger.error(f"TravelPlanner: NLU returned error - {error_message}")
+                    raise NLUServiceError(error_message)
+
+        # 检查是否收到了完整的回复
+        if not full_content:
+            logger.warning("TravelPlanner: NLU returned empty content")
+            return {
+                "messages": [],
+                "fallback_triggered": True,
+                "error_message": "NLU returned empty content",
+            }
 
         # 检查是否需要追问 (status=incomplete)
-        if nlu_response.status == "incomplete":
+        if nlu_status == "incomplete":
             logger.warning(
                 "TravelPlanner: NLU returned incomplete status, reply contains follow-up questions"
             )
-            # 目前 NLU 的追问功能有 BUG, 但仍然返回 incomplete 的回复
-            # 这里我们直接返回 NLU 的回复, 让用户补充信息
+
+        # 构造 NLUResponse 对象 (用于保持向后兼容)
+        nlu_response = NLUResponse(
+            session_id=nlu_session_id or session_id or "unknown",
+            type="itinerary",  # 默认为 itinerary
+            status=nlu_status or "complete",
+            reply=full_content,
+        )
 
         return {
-            "messages": [ai_message],
+            "messages": chunks,
             "nlu_response": nlu_response,
             "fallback_triggered": False,
         }

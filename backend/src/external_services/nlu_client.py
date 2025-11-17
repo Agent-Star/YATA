@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import AsyncGenerator
 from typing import Literal
 
 import httpx
@@ -207,6 +209,96 @@ class NLUClient:
                 exc_info=settings.is_dev(),
             )
             return False
+
+
+    async def call_nlu_stream(
+        self,
+        text: str,
+        session_id: str | None = None,
+    ) -> AsyncGenerator[dict, None]:
+        """
+        流式调用 NLU 服务 (/nlu/simple/stream 接口)
+
+        Args:
+            text: 用户输入的自然语言文本
+            session_id: 会话 ID (可选)
+
+        Yields:
+            dict: SSE 事件
+                - {"type": "phase_start", "phase": "intent_parsing"}
+                - {"type": "phase_end", "phase": "intent_parsing", "result": {...}}
+                - {"type": "token", "delta": "..."}
+                - {"type": "end", "session_id": "...", "status": "complete"}
+                - {"type": "error", "message": "..."}
+
+        Raises:
+            ServiceUnavailableError: NLU 服务不可达
+            NLUServiceError: NLU 服务返回错误
+        """
+        if not self._client:
+            raise RuntimeError("NLUClient must be used as async context manager")
+
+        request_data = NLURequest(text=text, session_id=session_id)
+
+        try:
+            logger.debug(
+                f"NLUClient: Streaming call to /nlu/simple/stream with "
+                f"text='{text[:50]}...', session_id={session_id}"
+            )
+
+            # 使用 httpx 的流式请求
+            async with self._client.stream(
+                "POST",
+                "/nlu/simple/stream",
+                json=request_data.model_dump(exclude_none=True),
+            ) as response:
+                response.raise_for_status()
+
+                # 逐行读取 SSE 事件
+                async for line in response.aiter_lines():
+                    line = line.strip()
+
+                    # 跳过空行和注释
+                    if not line or line.startswith(":"):
+                        continue
+
+                    # 解析 SSE 数据
+                    if line.startswith("data: "):
+                        data = line[6:]  # 去掉 "data: " 前缀
+
+                        # 检查是否为结束标记
+                        if data == "[DONE]":
+                            logger.debug("NLUClient: Received [DONE] marker")
+                            break
+
+                        # 解析 JSON 事件
+                        try:
+                            event = json.loads(data)
+                            logger.debug(f"NLUClient: Received event type={event.get('type')}")
+                            yield event
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"NLUClient: Failed to parse SSE data: {e}")
+                            continue
+
+        except httpx.TimeoutException as e:
+            error_msg = f"NLU service timeout after {self.timeout}s"
+            logger.error(f"NLUClient: {error_msg}")
+            raise ServiceUnavailableError(error_msg) from e
+
+        except httpx.ConnectError as e:
+            error_msg = f"Cannot connect to NLU service at {self.base_url}"
+            logger.error(f"NLUClient: {error_msg}")
+            raise ServiceUnavailableError(error_msg) from e
+
+        except httpx.HTTPStatusError as e:
+            error_msg = f"NLU service returned error: {e.response.status_code} - {e.response.text}"
+            logger.error(f"NLUClient: {error_msg}")
+            raise NLUServiceError(error_msg) from e
+
+        except Exception as e:
+            error_msg = f"Unexpected error streaming NLU service: {e}"
+            logger.error(f"NLUClient: {error_msg}", exc_info=settings.is_dev())
+            raise NLUServiceError(error_msg) from e
 
 
 # === 工厂函数 ===
