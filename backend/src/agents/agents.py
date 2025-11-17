@@ -13,7 +13,7 @@ from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
-from agents.travel_planner_functional import travel_planner
+from agents.travel_planner_functional import travel_planner, get_history_helper
 from core.settings import settings
 from schema import AgentInfo
 
@@ -45,6 +45,10 @@ agents: dict[str, Agent] = {
     "travel-planner": Agent(
         description="A travel planner powered by NLU/RAG, with fallback to research assistant.",
         graph=travel_planner,
+    ),
+    "get-history-helper": Agent(
+        description="Helper to retrieve full message history from checkpoint.",
+        graph=get_history_helper,
     ),
     "command-agent": Agent(description="A command agent.", graph=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),
