@@ -509,3 +509,76 @@ NLU 模块的实现是**正确的**：
 2. **添加缓存层**：对相同问题的响应进行缓存，减少 NLU 调用
 3. **监控和日志**：添加详细的性能监控和调用链追踪
 4. **单元测试**：为新的 `save_history_helper` 添加测试用例
+
+---
+
+## 后续修复记录
+
+### 修复 v3.0：Message ID 和 Fallback 历史（2025-11-18）
+
+#### 发现的新问题
+
+1. **Message ID 格式错误**：
+   - 使用 `id(input_message)` 导致 ID 是内存地址
+   - 每次运行都变化，收藏功能失效
+   - ID 格式从 `run--xxxx-yyyy` 变成纯数字
+
+2. **Fallback 历史记录缺失**：
+   - Fallback 到 research-assistant 时只转发不保存
+   - 刷新页面后历史为空
+
+#### 实施的修复
+
+**文件：`src/service/planner_routes.py`**
+
+1. **为所有消息设置稳定的 UUID**（第 222-227, 264-268, 335-339 行）：
+
+   ```python
+   # 为 input_message 设置 UUID
+   input_message = create_timestamped_message(
+       request.prompt,
+       HumanMessage,
+       id=str(uuid4())
+   )
+   message_id = input_message.id
+
+   # 为 final_message 设置 UUID
+   final_message = AIMessage(
+       content=full_content,
+       id=str(uuid4())
+   )
+
+   # 为 fallback_message 设置 UUID
+   fallback_message = AIMessage(
+       content=fallback_content,
+       id=str(uuid4())
+   )
+   ```
+
+2. **Fallback 路径收集响应并保存历史**（第 296-348 行）：
+
+   ```python
+   fallback_content = ""
+
+   async for stream_event in research_agent.astream(...):
+       # 收集内容
+       fallback_content += delta
+       # 流式转发
+       yield f"data: {json.dumps({'type': 'token', 'delta': delta})}\n\n"
+
+   # 保存历史
+   fallback_message = AIMessage(content=fallback_content, id=str(uuid4()))
+   await save_helper.ainvoke(
+       {"messages": [input_message, fallback_message]},
+       config=config
+   )
+   ```
+
+#### 修复效果
+
+✅ **Message ID 正确**：使用 UUID 格式，稳定且唯一
+✅ **收藏功能正常**：前端收藏可以同步到后端
+✅ **Fallback 历史完整**：刷新页面后对话正常显示
+✅ **多轮对话正常**：所有路径的上下文都正确保持
+
+**详细文档**：参见 `message-id-and-fallback-history-fix.md`

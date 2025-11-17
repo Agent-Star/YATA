@@ -218,9 +218,13 @@ async def plan_stream(
 
         config = RunnableConfig(configurable=configurable)
 
-        # 构建输入消息 (带时间戳)
-        input_message = create_timestamped_message(request.prompt, HumanMessage)
-        message_id = f"msg-{id(input_message)}"
+        # 构建输入消息 (带时间戳和稳定的 UUID)
+        input_message = create_timestamped_message(
+            request.prompt,
+            HumanMessage,
+            id=str(uuid4())  # ✅ 设置稳定的 UUID
+        )
+        message_id = input_message.id  # 使用消息自己的 UUID
 
         try:
             # ========== 尝试调用 NLU 流式 ==========
@@ -256,8 +260,11 @@ async def plan_stream(
 
             # ========== NLU 成功，保存历史 ==========
 
-            # 创建完整的 AIMessage
-            final_message = AIMessage(content=full_content)
+            # 创建完整的 AIMessage (带稳定的 UUID)
+            final_message = AIMessage(
+                content=full_content,
+                id=str(uuid4())  # ✅ 设置稳定的 UUID
+            )
             final_message = add_timestamp_to_message(final_message)
 
             # 使用 save-history-helper 保存历史（不会调用 NLU）
@@ -286,6 +293,9 @@ async def plan_stream(
                 # 调用 research-assistant（使用流式）
                 logger.info("PlanStream: Calling research-assistant as fallback")
 
+                # ✅ 收集完整响应内容（用于后续保存）
+                fallback_content = ""
+
                 async for stream_event in research_agent.astream(
                     {"messages": [input_message]},
                     config=config,
@@ -312,7 +322,30 @@ async def plan_stream(
                                     delta = content
                                 else:
                                     delta = str(content)
+
+                                # ✅ 收集内容
+                                fallback_content += delta
+
+                                # 立即转发给前端
                                 yield f"data: {json.dumps({'type': 'token', 'delta': delta})}\n\n"
+
+                # ========== Fallback 成功，保存历史 ==========
+
+                # 创建完整的 AIMessage (带稳定的 UUID)
+                fallback_message = AIMessage(
+                    content=fallback_content,
+                    id=str(uuid4())  # ✅ 设置稳定的 UUID
+                )
+                fallback_message = add_timestamp_to_message(fallback_message)
+
+                # 使用 save-history-helper 保存历史
+                save_helper = get_agent("save-history-helper")
+                await save_helper.ainvoke(
+                    {"messages": [input_message, fallback_message]},
+                    config=config
+                )
+
+                logger.info(f"PlanStream: Fallback completed, saved {len(fallback_content)} chars to history")
 
                 # 发送结束事件
                 empty_dict = {}

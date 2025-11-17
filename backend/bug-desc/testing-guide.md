@@ -173,6 +173,112 @@ PlanStream: Fallback to research-assistant also failed: ...
 - [ ] 多轮对话正常
 - [ ] 错误处理正确
 - [ ] 性能符合预期
+- [ ] **Message ID 格式正确（UUID）** ⭐ 新增
+- [ ] **收藏功能正常工作** ⭐ 新增
+- [ ] **Fallback 历史记录完整** ⭐ 新增
+
+---
+
+## 新增测试场景（v3.0）
+
+### 场景 6: Message ID 格式验证 ⭐
+
+**测试步骤：**
+
+1. 发送任意请求（NLU 或 Fallback 路径均可）
+2. 打开浏览器开发者工具
+3. 查看 Network 面板的 SSE 响应
+4. 检查 `end` 事件中的 `messageId` 字段
+
+**预期结果：**
+
+- ✅ Message ID 格式为 UUID（例如：`550e8400-e29b-41d4-a716-446655440000`）
+- ✅ 不是纯数字
+- ✅ 符合标准 UUID v4 格式
+
+**检查方法：**
+
+```javascript
+// 在浏览器控制台运行
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+console.log(uuidRegex.test(messageId));  // 应该返回 true
+```
+
+---
+
+### 场景 7: 收藏功能持久化测试 ⭐
+
+**测试步骤：**
+
+1. 发送请求并获得响应
+2. 收藏该响应消息
+3. 刷新页面
+4. 检查收藏状态是否保持
+
+**预期结果：**
+
+- ✅ 收藏请求成功发送到后端（检查 Network 面板）
+- ✅ 后端返回 200 OK
+- ✅ 刷新页面后收藏图标仍然高亮
+- ✅ 可以取消收藏
+
+**检查日志：**
+
+Backend 日志应显示：
+
+```
+POST /planner/favorites - 200 OK
+```
+
+---
+
+### 场景 8: Fallback 历史记录完整性测试 ⭐
+
+**测试步骤：**
+
+1. **停止 NLU 服务**（触发 Fallback）
+2. 发送请求：`什么是人工智能？`
+3. 等待 research-assistant 响应完成
+4. **刷新页面**
+5. 检查历史记录
+
+**预期结果：**
+
+- ✅ 历史记录中显示用户输入：`什么是人工智能？`
+- ✅ 历史记录中显示 AI 响应（完整内容）
+- ✅ 时间戳正确
+- ✅ 可以收藏该消息
+
+**检查日志：**
+
+```
+PlanStream: NLU failed (...), falling back to research-assistant
+PlanStream: Calling research-assistant as fallback
+PlanStream: Fallback completed, saved XXX chars to history
+SaveHistoryHelper: Saved 2 new messages, total Y messages
+```
+
+---
+
+### 场景 9: 混合路径多轮对话 ⭐
+
+**测试步骤：**
+
+1. **启动 NLU 服务**
+2. 发送第 1 个请求（旅行规划）：`我想去日本` - 走 NLU 路径
+3. **停止 NLU 服务**
+4. 发送第 2 个请求（一般问答）：`日本的人口是多少？` - 走 Fallback 路径
+5. **启动 NLU 服务**
+6. 发送第 3 个请求（旅行规划）：`需要准备多少钱？` - 走 NLU 路径
+7. 刷新页面查看历史
+
+**预期结果：**
+
+- ✅ 所有 3 轮对话都正确显示
+- ✅ 用户消息和 AI 响应都完整
+- ✅ 顺序正确（按时间升序）
+- ✅ 所有消息都可以收藏
+- ✅ Message ID 都是 UUID 格式
 
 ---
 
