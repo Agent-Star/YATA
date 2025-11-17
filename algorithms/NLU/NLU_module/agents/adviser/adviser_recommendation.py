@@ -7,7 +7,9 @@ from collections.abc import AsyncGenerator
 logger = logging.getLogger(__name__)
 
 
-async def generate_recommendations(adviser, intent_result, rag_results=None, debug=False):
+async def generate_recommendations(
+    adviser, intent_result, rag_results=None, debug=False
+):
     rag_results = rag_results or []
     intent = intent_result.get("intent_parsed", {})
     dests = intent.get("dest_pref", [])
@@ -301,4 +303,3 @@ async def generate_recommendations_stream(
     except Exception as e:
         logger.error(f"流式生成推荐失败: {e}")
         raise
-

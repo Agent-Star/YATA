@@ -5,7 +5,9 @@ from typing import Any
 import httpx
 
 
-async def call_rag_api(query: str, city: str = "", top_k: int = 25, debug: bool = False) -> list[dict[str, Any]]:
+async def call_rag_api(
+    query: str, city: str = "", top_k: int = 25, debug: bool = False
+) -> list[dict[str, Any]]:
     """
     异步调用 RAG API
 
@@ -64,5 +66,6 @@ async def call_rag_api(query: str, city: str = "", top_k: int = 25, debug: bool 
         print(f"❌ RAG 调用失败: {type(e).__name__}: {e}")
         if debug:
             import traceback
+
             traceback.print_exc()
         return []
