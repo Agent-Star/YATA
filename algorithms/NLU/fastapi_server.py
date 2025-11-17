@@ -16,8 +16,8 @@ SESSIONS: OrderedDict[str, NLU] = OrderedDict()
 # 会话管理配置
 MAX_SESSIONS = 100  # 最大会话数, 超过后淘汰最旧的会话
 
-# 请求超时时间 (秒), 留 2s buffer 给 backend 的 30s 超时
-REQUEST_TIMEOUT = 28.0
+# 请求超时时间 (秒), 留 2s buffer 给 backend 的 60s 超时
+REQUEST_TIMEOUT = 58.0
 
 app = FastAPI(title="YATA NLU API", description="智能旅行助手", version="1.0.0")
 
