@@ -35,6 +35,7 @@ def prompt_parse_intent(
         subtype: 若为推荐类，则细分为 "hotel"（酒店） / "food"（餐厅） / "attraction"（景点/活动
         origin: 出发地
         dest_pref: 目的地列表
+        dest_update_mode: 目的地更新模式（"replace" / "append" / "keep"）
         date_window: 出行日期范围
         trip_len_days: 行程天数
         budget_total_cny: 预算
@@ -102,7 +103,14 @@ def prompt_parse_intent(
 3) 出发地、目的地、日期、天数、预算、人数若缺失必须标出；
 4) 如果历史对话中已有相关信息，请优先使用历史信息，当前输入只补充或更新缺失的部分；
 5) **如果历史对话中已有 task_type，必须继承该 task_type（除非用户明确改变任务类型）**；
-6) 只返回 JSON。
+6) **目的地更新模式（dest_update_mode）判断**：
+   - 当用户明确表示要"换成"、"改为"、"改成"、"换到"、"改到"其他目的地时，输出 "replace"，表示替换之前的目的地
+   - 当用户使用"如果是...呢"、"要是"、"假如是"、"那...呢"等假设或疑问语气切换目的地时，输出 "replace"
+   - 当用户明确说"重新"、"不对"、"不不不"等否定之前选择的词语时，输出 "replace"
+   - 当用户表示要"增加"、"再加上"、"还有"、"以及"等追加其他目的地时，输出 "append"
+   - 当用户当前输入未涉及目的地变更或只是补充其他信息（如预算、天数等）时，输出 "keep"
+   - 如果无法明确判断，默认使用 "append"
+7) 只返回 JSON。
 {history_context}{task_type_instruction}
 当前用户输入: "{user_input}"
 
@@ -111,6 +119,7 @@ def prompt_parse_intent(
   "task_type": "recommendation",
   "origin": null,
   "dest_pref": ["巴黎"],
+  "dest_update_mode": "keep",
   "date_window": {{"from": null, "to": null}},
   "trip_len_days": null,
   "budget_total_cny": null,
