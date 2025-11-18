@@ -7,10 +7,10 @@ Type=simple
 # 注意: 此配置仅适用于用户级服务 (systemctl --user)
 # 开发模式: 使用 npm run dev (支持热重载)
 WorkingDirectory=%h/YATA/frontend
-Environment="PATH=%h/YATA/frontend/node_modules/.bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=development"
 Environment="PORT=3000"
-ExecStart=/usr/bin/npm run dev
+# 通过 bash 加载 nvm 环境后执行 npm (支持 nvm 管理的 Node.js)
+ExecStart=/bin/bash -c 'source %h/.nvm/nvm.sh && npm run dev'
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
