@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 # adviser_recommendation.py
 import json
+import logging
+from collections.abc import AsyncGenerator
+
+logger = logging.getLogger(__name__)
 
 
-async def generate_recommendations(adviser, intent_result, rag_results=None, debug=False):
+async def generate_recommendations(
+    adviser, intent_result, rag_results=None, debug=False
+):
     rag_results = rag_results or []
     intent = intent_result.get("intent_parsed", {})
     dests = intent.get("dest_pref", [])
@@ -164,3 +170,136 @@ async def generate_recommendations(adviser, intent_result, rag_results=None, deb
         out["natural_summary"] = natural_summary.strip()
 
     return out
+
+
+async def generate_recommendations_stream(
+    adviser, intent_result, rag_results=None, debug=False
+) -> AsyncGenerator[str, None]:
+    """
+    流式生成推荐内容 (逐 token 返回)
+
+    参数:
+        adviser: Adviser 实例
+        intent_result: 包含 intent_parsed 等信息的结果字典
+        rag_results: RAG 检索结果
+        debug: 是否开启调试模式
+
+    Yields:
+        str: 每次生成的文本 chunk (推荐内容的 Markdown 片段)
+    """
+    rag_results = rag_results or []
+    intent = intent_result.get("intent_parsed", {})
+    dests = intent.get("dest_pref", [])
+    city = dests[0] if dests else ""
+    tags = [t.lower() for t in intent.get("tags", [])]
+    party = intent.get("party", {})
+    budget = intent.get("budget_total_cny", None)
+    subtype = intent.get("subtype", "").lower()
+
+    # 确定推荐类型
+    if subtype:
+        rec_type = subtype
+    else:
+        # fallback 原逻辑
+        if any(k in tags for k in ["hotel", "住宿", "旅馆", "stay"]):
+            rec_type = "hotel"
+        elif any(k in tags for k in ["food", "restaurant", "美食", "餐厅", "吃"]):
+            rec_type = "food"
+        else:
+            rec_type = "attraction"
+
+    # 简化的推荐 Prompt（直接生成自然语言，不生成 JSON）
+    # 根据推荐类型调整 prompt
+    if rec_type == "hotel":
+        prompt = f"""
+你是一名资深酒店顾问。请为 {city or "目的地"} 提供详细的酒店推荐。
+已知标签：{tags}，出行人数：{party}，预算（CNY）：{budget}
+
+要求：
+1) 推荐 3-5 家酒店，覆盖不同价位和风格（豪华型/精品型/经济型/公寓式等）
+2) 每家酒店需要包含：
+   - 酒店名称和类型
+   - 所在区域（如 拉丁区/歌剧院/香榭丽舍）
+   - 特色亮点（交通便利/地标景观/设计风格/早餐质量等）
+   - 价格范围（€/晚）
+   - 到市中心/主要景点的距离
+   - 评分和预订建议
+   - 注意事项（噪音/无电梯/早餐/交通）
+3) 按自然段落组织，每个酒店单独成段，长度约 4-6 句话
+4) 语气自然、有代入感，像人写的旅游攻略
+5) 最后写一个总结段，概述酒店分布与性价比建议
+
+参考 RAG 检索结果（自然融合，不要生硬引用）：
+{json.dumps(rag_results[:3], ensure_ascii=False, indent=2)}
+
+只输出 Markdown 正文，不要输出 JSON 或代码块。长度约 800-1200 字。
+"""
+    elif rec_type == "food":
+        prompt = f"""
+你是一名资深餐饮顾问。请为 {city or "目的地"} 提供详细的餐厅与美食推荐。
+已知标签：{tags}，出行人数：{party}，预算（CNY）：{budget}
+
+要求：
+1) 推荐 3-5 家餐厅/街头小吃/咖啡馆/甜品店，覆盖不同类型
+2) 每家需要包含：
+   - 名称和类型（法餐/中餐/甜点/咖啡馆/米其林餐厅/地方菜）
+   - 所在区域（如 玛黑区/圣日耳曼）
+   - 推荐菜品和风格特色
+   - 人均消费（€）
+   - 营业时间和最佳用餐时段
+   - 预订建议
+   - 交通方式
+   - 小贴士（等位/服务费/着装要求）
+3) 按自然段落组织，每家餐厅单独成段，长度约 4-6 句话
+4) 语气自然、有代入感，像人写的美食攻略
+5) 最后写一个总结段，概述餐饮氛围、价位梯度与适合人群
+
+参考 RAG 检索结果（自然融合，不要生硬引用）：
+{json.dumps(rag_results[:3], ensure_ascii=False, indent=2)}
+
+只输出 Markdown 正文，不要输出 JSON 或代码块。长度约 800-1200 字。
+"""
+    else:  # 景点推荐
+        prompt = f"""
+你是一名资深旅行顾问。请为 {city or "目的地"} 提供详细的景点/活动推荐。
+已知标签：{tags}，出行人数：{party}，预算（CNY）：{budget}
+
+要求：
+1) 推荐 3-5 个项目，覆盖地标、艺术馆、公园、夜景、特色活动等
+2) 每个项目需要包含：
+   - 名称和类型（景点/博物馆/活动/夜景/步行路线）
+   - 所在区域
+   - 独特体验和卖点
+   - 适合的时间段
+   - 建议停留时间
+   - 票价信息（如有）
+   - 花费预估（€）
+   - 交通方式（地铁/步行/巴士/游船等）
+   - 地址或入口说明
+   - 小贴士（排队/预约/语言/文化/天气建议）
+3) 按自然段落组织，每个景点单独成段，长度约 4-6 句话
+4) 语气自然、有代入感，像人写的旅游攻略
+5) 最后写一个总结段，概述行程建议、节省时间策略与门票小贴士
+
+参考 RAG 检索结果（自然融合，不要生硬引用）：
+{json.dumps(rag_results[:3], ensure_ascii=False, indent=2)}
+
+只输出 Markdown 正文，不要输出 JSON 或代码块。长度约 800-1200 字。
+"""
+
+    if debug:
+        logger.info(f"开始流式生成 {rec_type} 推荐...")
+
+    # 使用流式 API 逐 token 返回
+    try:
+        async for chunk in adviser.ask_text_stream(
+            prompt, temperature=0.7, max_tokens=6000
+        ):
+            yield chunk
+
+        if debug:
+            logger.info(f"流式生成 {rec_type} 推荐完成")
+
+    except Exception as e:
+        logger.error(f"流式生成推荐失败: {e}")
+        raise

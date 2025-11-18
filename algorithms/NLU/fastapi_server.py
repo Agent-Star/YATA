@@ -255,6 +255,9 @@ async def nlu_simple_stream(request: NLURequest):
             from NLU_module.agents.adviser.adviser_itinerary import (
                 generate_itinerary_stream,
             )
+            from NLU_module.agents.adviser.adviser_recommendation import (
+                generate_recommendations_stream,
+            )
             from NLU_module.agents.adviser.adviser_rag import call_rag_api
 
             result = (
@@ -364,7 +367,7 @@ async def nlu_simple_stream(request: NLURequest):
 
             yield _sse_event({"type": "phase_end", "phase": "content_generation"})
 
-            # === 阶段 4: 行程生成 (流式) ===
+            # === 阶段 4: 内容生成 (流式) ===
             if task_type == "itinerary":
                 yield _sse_event(
                     {"type": "phase_start", "phase": "itinerary_generation"}
@@ -377,6 +380,19 @@ async def nlu_simple_stream(request: NLURequest):
                     yield _sse_event({"type": "token", "delta": token})
 
                 yield _sse_event({"type": "phase_end", "phase": "itinerary_generation"})
+
+            elif task_type == "recommendation":
+                yield _sse_event(
+                    {"type": "phase_start", "phase": "recommendation_generation"}
+                )
+
+                # 使用流式生成推荐
+                async for token in generate_recommendations_stream(
+                    session_nlu.adviser.llm, result, rag_results, debug=False
+                ):
+                    yield _sse_event({"type": "token", "delta": token})
+
+                yield _sse_event({"type": "phase_end", "phase": "recommendation_generation"})
 
             # === 完成 ===
             yield _sse_event({"type": "end", "session_id": sid, "status": "complete"})
