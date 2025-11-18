@@ -21,11 +21,41 @@ function ChatMessage({ message, onToggleFavorite }) {
     }
   };
   const handleCopy = async () => {
+    const text = displayContent || '';
+
+    const legacyCopy = () => {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      const selection = document.getSelection();
+      const selectedRange =
+        selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (selectedRange) {
+        selection.removeAllRanges();
+        selection.addRange(selectedRange);
+      }
+    };
+
     try {
-      await navigator.clipboard.writeText(displayContent || '');
+      if (navigator?.clipboard?.writeText && window?.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        legacyCopy();
+      }
       Toast.success(t('chat.copySuccess'));
     } catch (error) {
-      Toast.error(t('chat.copyFailed'));
+      try {
+        legacyCopy();
+        Toast.success(t('chat.copySuccess'));
+      } catch {
+        Toast.error(t('chat.copyFailed'));
+      }
     }
   };
   return (
