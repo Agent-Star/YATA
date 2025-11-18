@@ -71,7 +71,7 @@ class NLU:
                 conversation_history=conversation_history,
                 use_rag=False,
                 rag_top_k=25,
-                debug=False,
+                debug=True,
                 skip_clarifier=False,
             )
         # 保存 Adviser 输出
@@ -139,7 +139,7 @@ class NLU:
                     conversation_history=conversation_history,
                     use_rag=True,
                     rag_top_k=25,
-                    debug=False,
+                    debug=True,
                 )
                 explanation, is_safe = await self.verifier.assess_cur_response(response)
 

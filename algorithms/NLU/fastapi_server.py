@@ -255,17 +255,17 @@ async def nlu_simple_stream(request: NLURequest):
             from NLU_module.agents.adviser.adviser_itinerary import (
                 generate_itinerary_stream,
             )
+            from NLU_module.agents.adviser.adviser_rag import call_rag_api
             from NLU_module.agents.adviser.adviser_recommendation import (
                 generate_recommendations_stream,
             )
-            from NLU_module.agents.adviser.adviser_rag import call_rag_api
 
             result = (
                 await run_intent_parsing(
                     session_nlu.adviser.llm,
                     request.text,
                     session_nlu.adviser.memory.get("history", []),
-                    debug=False,
+                    debug=True,
                 )
                 or {}
             )
@@ -299,6 +299,7 @@ async def nlu_simple_stream(request: NLURequest):
             yield _sse_event({"type": "phase_start", "phase": "rag_search"})
 
             task_type = result["intent_parsed"].get("task_type", "itinerary")
+            logger.info(f"🔍 [Stream {sid}] task_type = {task_type}")  # 查看识别的类型
             city_list = result["intent_parsed"].get("dest_pref", [])
             city_raw = city_list[0] if city_list else ""
 
@@ -317,7 +318,7 @@ async def nlu_simple_stream(request: NLURequest):
             else:
                 query_text = f"{city} recommendations"
 
-            rag_results = await call_rag_api(query_text, city, top_k=5, debug=False)
+            rag_results = await call_rag_api(query_text, city, top_k=5, debug=True)
 
             yield _sse_event(
                 {
@@ -375,7 +376,7 @@ async def nlu_simple_stream(request: NLURequest):
 
                 # 使用流式生成
                 async for token in generate_itinerary_stream(
-                    session_nlu.adviser.llm, result, rag_results, debug=False
+                    session_nlu.adviser.llm, result, rag_results, debug=True
                 ):
                     yield _sse_event({"type": "token", "delta": token})
 
@@ -388,11 +389,13 @@ async def nlu_simple_stream(request: NLURequest):
 
                 # 使用流式生成推荐
                 async for token in generate_recommendations_stream(
-                    session_nlu.adviser.llm, result, rag_results, debug=False
+                    session_nlu.adviser.llm, result, rag_results, debug=True
                 ):
                     yield _sse_event({"type": "token", "delta": token})
 
-                yield _sse_event({"type": "phase_end", "phase": "recommendation_generation"})
+                yield _sse_event(
+                    {"type": "phase_end", "phase": "recommendation_generation"}
+                )
 
             # === 完成 ===
             yield _sse_event({"type": "end", "session_id": sid, "status": "complete"})
