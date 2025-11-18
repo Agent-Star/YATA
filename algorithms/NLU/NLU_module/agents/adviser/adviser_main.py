@@ -19,6 +19,24 @@ logger = logging.getLogger(__name__)
 
 # adviser_main.py
 def merge_partial(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+    """
+    合并历史意图和新解析的意图
+
+    参数:
+        old: 历史意图 (memory)
+        new: 新解析的意图
+
+    返回:
+        合并后的意图
+
+    特殊处理:
+        - task_type: 优先保留有效的 task_type (非 "other")
+        - dest_pref: 根据 dest_update_mode 字段决定合并策略：
+            * "replace": 替换旧目的地
+            * "keep": 保持旧目的地不变
+            * "append": 追加新目的地（去重合并）
+        - 其他字段: 非空值覆盖，字典合并，列表去重合并
+    """
     if not old:
         return new or {}
 
@@ -44,13 +62,26 @@ def merge_partial(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
             continue
         if k == "dest_pref":
             prev = out.get(k) or []
-            seen, merged = set(), []
-            for item in prev + v:
-                s = str(item)
-                if s not in seen:
-                    seen.add(s)
-                    merged.append(item)
-            out[k] = merged
+            new_dests = v or []
+
+            # 获取目的地更新模式（从 LLM 返回的 intent 中获取）
+            update_mode = new.get("dest_update_mode", "append")
+
+            if update_mode == "replace":
+                # 替换模式：直接使用新的目的地，丢弃旧的
+                out[k] = new_dests
+            elif update_mode == "keep":
+                # 保持模式：不更新目的地，保留旧的
+                out[k] = prev
+            else:  # append 或其他情况
+                # 追加模式：合并去重（原有逻辑）
+                seen, merged = set(), []
+                for item in prev + new_dests:
+                    s = str(item)
+                    if s not in seen:
+                        seen.add(s)
+                        merged.append(item)
+                out[k] = merged
             continue
         if isinstance(v, dict):
             out[k] = {**out.get(k, {}), **v}
