@@ -1,0 +1,18 @@
+[Unit]
+Description=YATA NLU Service
+After=network.target
+
+[Service]
+Type=simple
+# 注意: 此配置仅适用于用户级服务 (systemctl --user)
+WorkingDirectory=%h/YATA/algorithms/NLU
+Environment="PATH=%h/YATA/algorithms/NLU/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NLU_API_PORT=8010"
+ExecStart=%h/YATA/algorithms/NLU/.venv/bin/python fastapi_server.py
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

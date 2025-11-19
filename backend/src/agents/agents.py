@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from langgraph.graph.state import CompiledStateGraph
@@ -12,9 +13,14 @@ from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
+from agents.travel_planner_functional import travel_planner, get_history_helper, save_history_helper
+from core.settings import settings
 from schema import AgentInfo
 
-DEFAULT_AGENT = "research-assistant"
+logger = logging.getLogger(__name__)
+
+DEFAULT_AGENT = settings.DEFAULT_AGENT
+logger.info(f"Default Agent: {DEFAULT_AGENT}")
 
 # Type alias to handle LangGraph's different agent patterns
 # - @entrypoint functions return Pregel
@@ -35,6 +41,18 @@ agents: dict[str, Agent] = {
     ),
     "rag-assistant": Agent(
         description="A RAG assistant with access to information in a database.", graph=rag_assistant
+    ),
+    "travel-planner": Agent(
+        description="A travel planner powered by NLU/RAG, with fallback to research assistant.",
+        graph=travel_planner,
+    ),
+    "get-history-helper": Agent(
+        description="Helper to retrieve full message history from checkpoint.",
+        graph=get_history_helper,
+    ),
+    "save-history-helper": Agent(
+        description="Helper to save messages to checkpoint without processing.",
+        graph=save_history_helper,
     ),
     "command-agent": Agent(description="A command agent.", graph=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),

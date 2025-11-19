@@ -1,6 +1,6 @@
 from enum import StrEnum
 from json import loads
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -78,6 +78,12 @@ class Settings(BaseSettings):
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
     LOG_LEVEL: LogLevel = LogLevel.WARNING
 
+    # === 是否对 history 进行过滤 ToolMessage ===
+    FILTER_TOOL_MESSAGE_IN_HISTORY: bool = True
+
+    # === 默认 Agent 配置 ===
+    DEFAULT_AGENT: Literal["research-assistant", "travel-planner"] = "travel-planner"
+
     # === 认证配置 ===
     # 向后兼容的 Bearer Token 认证 (用于 API 密钥访问)
     AUTH_SECRET: SecretStr | None = None
@@ -91,7 +97,14 @@ class Settings(BaseSettings):
         description="JWT token 有效期 (秒)",
     )
 
+    # Cookie 调试日志
+    COOKIE_DEBUG_LOG: bool = Field(
+        default=False,
+        description="是否启用 Cookie 调试日志（开发调试用）",
+    )
+
     # 超级管理员配置
+    SUPER_ADMIN_EMAIL: str | None = None
     SUPER_ADMIN_USERNAME: str | None = None
     SUPER_ADMIN_PASSWORD: SecretStr | None = None
 
@@ -117,6 +130,17 @@ class Settings(BaseSettings):
     COMPATIBLE_BASE_URL: str | None = None
 
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
+
+    # === NLU 服务配置 ===
+    NLU_SERVICE_URL: str = "http://localhost:8010"
+    NLU_TIMEOUT: float = 60.0  # 打大一点先
+    NLU_MAX_RETRIES: int = 1
+    ENABLE_NLU_FALLBACK: bool = True  # 是否启用兜底机制
+
+    # === RAG 服务配置 ===
+    RAG_SERVICE_URL: str = "http://localhost:8001"
+    RAG_TIMEOUT: float = 60.0
+    RAG_MAX_RETRIES: int = 1
 
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_PROJECT: str = "default"

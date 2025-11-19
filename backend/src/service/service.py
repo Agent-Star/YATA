@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -80,7 +80,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("用户认证数据库表初始化完成")
 
         # Initialize super admin user if configured
-        if settings.SUPER_ADMIN_USERNAME and settings.SUPER_ADMIN_PASSWORD:
+        if (
+            settings.SUPER_ADMIN_EMAIL
+            and settings.SUPER_ADMIN_USERNAME
+            and settings.SUPER_ADMIN_PASSWORD
+        ):
             await initialize_super_admin()
 
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
@@ -119,21 +123,137 @@ app = FastAPI(
 
 # === CORS 中间件配置 ===
 # 允许前端跨域访问, 并支持 Cookie 认证
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+
+if settings.is_dev():
+    # 开发模式：完全开放 CORS，允许任意来源（方便本地开发和测试）
+    logger.info("开发模式：CORS 已完全开放（允许所有来源）")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r".*",  # 匹配所有来源（任意 IP、端口、协议）
+        allow_credentials=True,  # 允许携带 Cookie
+        allow_methods=["*"],  # 允许所有 HTTP 方法
+        allow_headers=["*"],  # 允许所有请求头
+    )
+else:
+    # 生产模式：严格限制 CORS，只允许白名单中的来源
+    allowed_origins = [
+        # 本地开发
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
         "http://localhost:8080",
+        "http://127.0.0.1:3000",
         "http://127.0.0.1:8080",
-    ],  # 前端开发地址
-    allow_credentials=True,  # 允许携带 Cookie
-    allow_methods=["*"],  # 允许所有 HTTP 方法
-    allow_headers=["*"],  # 允许所有请求头
-)
+        # EC2 生产环境
+        "http://166.117.38.176:3000",  # EC2 前端（已加速）
+        "http://166.117.38.176:8080",  # EC2 后端（已加速）
+        "http://13.213.30.181:3000",  # EC2 前端（原始）
+        "http://13.213.30.181:8080",  # EC2 后端（原始）
+        # 如果有域名，添加在这里
+        # "https://yata.example.com",
+    ]
+
+    logger.info(f"生产模式：CORS 仅允许以下来源: {allowed_origins}")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,  # 允许携带 Cookie
+        allow_methods=["*"],  # 允许所有 HTTP 方法
+        allow_headers=["*"],  # 允许所有请求头
+    )
+
+
+# === Cookie 调试中间件 ===
+# 记录所有请求的 Cookie 信息，帮助调试认证问题
+@app.middleware("http")
+async def cookie_debug_middleware(request: Request, call_next: Any) -> Response:
+    """记录请求的 Cookie 信息用于调试"""
+    if settings.COOKIE_DEBUG_LOG:
+        cookies = request.cookies
+        if request.url.path.startswith("/planner") or request.url.path.startswith("/auth"):
+            logger.info(
+                f"[Cookie Debug] {request.method} {request.url.path} - Cookies: {list(cookies.keys())}"
+            )
+            if "yata_auth" in cookies:
+                logger.info(f"[Cookie Debug] yata_auth 存在，长度: {len(cookies['yata_auth'])}")
+            else:
+                logger.warning("[Cookie Debug] ⚠️ yata_auth Cookie 缺失！")
+
+    response = await call_next(request)
+    return response
+
+
+# === OPTIONS 预检请求处理中间件 ===
+# 直接响应 OPTIONS 请求，避免触发认证检查
+@app.middleware("http")
+async def options_preflight_handler(request: Request, call_next: Any) -> Response:
+    """
+    处理 CORS 预检请求 (OPTIONS)
+
+    浏览器在发送跨域请求前，会先发送 OPTIONS 预检请求。
+    如果 OPTIONS 请求到达需要认证的路由，会触发认证检查并返回 401，
+    导致浏览器阻止实际请求。
+
+    这个中间件在认证检查之前直接响应 OPTIONS 请求，返回 200 OK，
+    并手动添加必要的 CORS 响应头。
+    """
+    if request.method == "OPTIONS":
+        # 获取请求的 Origin
+        origin = request.headers.get("origin")
+
+        # 创建响应
+        response = Response(status_code=200)
+
+        # 定义白名单（开发和生产都需要）
+        allowed_origins = [
+            # 本地开发
+            "http://localhost:3000",
+            "http://localhost:8080",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8080",
+            # EC2 生产环境
+            "http://166.117.38.176:3000",
+            "http://166.117.38.176:8080",
+            "http://13.213.30.181:3000",
+            "http://13.213.30.181:8080",
+        ]
+
+        # 检查 origin 是否在白名单中
+        if settings.is_dev():
+            # 开发模式：允许任意来源
+            if origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+            else:
+                response.headers["Access-Control-Allow-Origin"] = "*"
+        else:
+            # 生产模式：严格检查白名单
+            if origin and origin in allowed_origins:
+                response.headers["Access-Control-Allow-Origin"] = origin
+            elif origin:
+                # ⚠️ 不在白名单的来源：返回 403 或不设置 Allow-Origin
+                logger.warning(f"CORS 预检被拒绝：Origin '{origin}' 不在白名单中")
+                # 不设置 Access-Control-Allow-Origin，浏览器会报 CORS 错误
+                return Response(status_code=403, content="Origin not allowed")
+
+        # 添加其他必要的 CORS 响应头
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, Authorization, Accept, Origin, User-Agent, DNT, Cache-Control, X-Mx-ReqToken, Keep-Alive, X-Requested-With, If-Modified-Since"
+        )
+        response.headers["Access-Control-Max-Age"] = "600"  # 预检结果缓存 10 分钟
+
+        return response
+
+    # 非 OPTIONS 请求，继续正常处理
+    response = await call_next(request)
+    return response
+
 
 # === 认证路由 ===
 # 注意：认证路由不需要 Bearer token 验证
+
+# ⚠️ 前端适配路由必须最先注册，以覆盖 FastAPI-Users 的默认路由
+# 前端适配路由 (提供前端期望的接口格式，包含增强的异常处理)
+app.include_router(frontend_router)
 
 # Cookie 认证路由 (主要方式, 用于前端)
 app.include_router(
@@ -172,9 +292,6 @@ app.include_router(
     prefix="/users",
     tags=["users"],
 )
-
-# 前端适配路由 (提供前端期望的接口格式)
-app.include_router(frontend_router)
 
 # 行程规划路由 (智能行程规划功能)
 app.include_router(planner_router)

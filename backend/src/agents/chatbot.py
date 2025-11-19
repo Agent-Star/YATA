@@ -24,5 +24,6 @@ async def chatbot(
     response = add_timestamp_to_message(response)
 
     return entrypoint.final(
-        value={"messages": [response]}, save={"messages": messages + [response]}
+        value={"messages": [response]},
+        save={"messages": messages + [response]}
     )

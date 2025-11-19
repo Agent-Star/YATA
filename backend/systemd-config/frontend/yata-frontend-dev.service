@@ -1,0 +1,20 @@
+[Unit]
+Description=YATA Frontend Service (Development)
+After=network.target
+
+[Service]
+Type=simple
+# 注意: 此配置仅适用于用户级服务 (systemctl --user)
+# 开发模式: 使用 npm run dev (支持热重载)
+WorkingDirectory=%h/YATA/frontend
+Environment="NODE_ENV=development"
+Environment="PORT=3000"
+# 通过 bash 加载 nvm 环境后执行 npm (支持 nvm 管理的 Node.js)
+ExecStart=/bin/bash -c 'source %h/.nvm/nvm.sh && npm run dev'
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

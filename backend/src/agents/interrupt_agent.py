@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class AgentState(MessagesState, total=False):
-    """`total=False` is PEP589 specs.
+    """
+    `total=False` is PEP589 specs.
 
     documentation: https://typing.readthedocs.io/en/latest/spec/typeddict.html#totality
     """

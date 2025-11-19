@@ -16,16 +16,17 @@ async def initialize_super_admin() -> None:
     """
     初始化超级管理员账户
 
-    如果配置了 SUPER_ADMIN_USERNAME 和 SUPER_ADMIN_PASSWORD,
+    如果配置了 SUPER_ADMIN_USERNAME & SUPER_ADMIN_PASSWORD,
     并且数据库中不存在该用户名的账户, 则自动创建超级管理员.
 
     密码会通过 UserManager 自动哈希加密.
     """
     try:
+        admin_email = settings.SUPER_ADMIN_EMAIL
         admin_username = settings.SUPER_ADMIN_USERNAME
         admin_password = settings.SUPER_ADMIN_PASSWORD
 
-        if not admin_username or not admin_password:
+        if not admin_email or not admin_username or not admin_password:
             return
 
         logger.info(f"检查超级管理员账户: {admin_username}")
@@ -61,7 +62,7 @@ async def initialize_super_admin() -> None:
                     # UserManager.create() 会自动哈希密码
                     admin_user = await user_manager.create(
                         UserCreate(
-                            email=f"{admin_username}@admin.local",  # 生成一个管理员邮箱
+                            email=admin_email,
                             username=admin_username,
                             password=admin_password.get_secret_value(),  # 明文密码, UserManager 会自动哈希
                             is_superuser=True,
