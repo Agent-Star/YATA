@@ -671,6 +671,7 @@ body {
 
 .auth-prompt__switch {
   margin-top: 16px;
+  margin-bottom: 16px;
   text-align: center;
 }
 
